@@ -1,21 +1,21 @@
 {
   "name": "rar.vg-server",
   "version": "2023.513.0",
-  "description": "",
+  "description": "Web server for rar.vg",
   "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/juanvecchio/rar.vg-server.git"
+    "url": "git+https://github.com/gerardowacker/rar.vg-server"
   },
-  "author": "",
+  "author": "Gerardo Wacker, Juan Ignacio Vecchio",
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/juanvecchio/rar.vg-server/issues"
+    "url": "https://github.com/gerardowacker/rar.vg-server/issues"
   },
-  "homepage": "https://github.com/juanvecchio/rar.vg-server#readme",
+  "homepage": "https://github.com/gerardowacker/rar.vg-server#readme",
   "dependencies": {
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
