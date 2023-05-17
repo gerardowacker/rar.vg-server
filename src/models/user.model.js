@@ -24,6 +24,6 @@ module.exports = class User
         argument.concat((i === 0 ? '' : ' AND '), queryKeys[i] + ' = ' + matches[queryKeys])
       }
 
-      return db.execute('SELECT id, username, displayName, creationDate, dateOfBirth, components, links FROM users WHERE ?', [argument])
+      return db.execute(argument)
     }
 }
