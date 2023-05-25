@@ -25,6 +25,10 @@ class WebController
             app.use(cors())
             app.set("trust proxy", true)
 
+            // Static stuff.
+            app.use('/avatar', express.static(__dirname + '/public/avatars'));
+            app.use('/uploads', express.static(__dirname + '/public/userfiles'));
+
             // Create the router, and implement it into the server.
             this.router.create().then(routes => app.use("/", routes))
 
