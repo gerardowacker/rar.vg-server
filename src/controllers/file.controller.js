@@ -19,15 +19,15 @@ module.exports = class FileController
             const fileExtension = file.split(".").pop()
             const newFileName = this.#generateString() + '.' + fileExtension
             let uploadPath;
+            if (fileExtension !== "png" && fileExtension !== "jpg" && fileExtension !== "webp" && fileExtension !== "pdf")
+                resolve({
+                    status: 400,
+                    content: "File format is not allowed."
+                })
             if (avatar)
             {
-                if (fileExtension !== "png" && fileExtension !== "jpg" && fileExtension !== "webp")
-                    resolve({
-                        status: 400,
-                        content: "File format is not allowed."
-                    })
-                const username = '' // Will get everything done once session parsing is implemented.
-                uploadPath = __dirname + '/public/avatars/' + username + '.' + fileExtension;
+                const id = 0 // Will get everything done once session parsing is implemented.
+                uploadPath = __dirname + '/public/avatars/' + id + '.' + fileExtension;
             }
             else
             {
