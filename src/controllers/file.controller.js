@@ -1,6 +1,6 @@
 module.exports = class FileController
 {
-    upload(files, session)
+    upload(files, session, avatar)
     {
         return new Promise(resolve =>
         {
@@ -8,7 +8,7 @@ module.exports = class FileController
             {
                 resolve({
                     status: 400,
-                    "content": "No files were uploaded"
+                    content: "No files were uploaded."
                 })
             }
 
@@ -16,8 +16,23 @@ module.exports = class FileController
             // include everything authentication when it's implemented.
 
             const file = files.theFile;
-            const newFileName = this.#generateString() + '.' + file.split(".").pop()
-            const uploadPath = __dirname + '/public/userfiles/' + newFileName;
+            const fileExtension = file.split(".").pop()
+            const newFileName = this.#generateString() + '.' + fileExtension
+            let uploadPath;
+            if (avatar)
+            {
+                if (fileExtension !== "png" && fileExtension !== "jpg" && fileExtension !== "webp")
+                    resolve({
+                        status: 400,
+                        content: "File format is not allowed."
+                    })
+                const username = '' // Will get everything done once session parsing is implemented.
+                uploadPath = __dirname + '/public/avatars/' + username + '.' + fileExtension;
+            }
+            else
+            {
+                uploadPath = __dirname + '/public/userfiles/' + newFileName;
+            }
 
             file.mv(uploadPath, err =>
             {
