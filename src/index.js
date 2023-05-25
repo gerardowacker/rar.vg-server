@@ -6,7 +6,8 @@ const WebController = require("./controllers/web.controller")
 const web = new WebController()
 
 // Start the web server, then execute some stuff.
-web.start().then(server => {
+web.start().then(server =>
+{
     server.listen(port)
-    console.log("🚀 Server started using port ", port)
+    console.log("🚀 Server started using port", port)
 })

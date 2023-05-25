@@ -1,5 +1,6 @@
 const config = require('../../config/config.json')
 
-module.exports = key => {
+module.exports = key =>
+{
     return config[key] === "" ? process.env[key] : config[key]
 }

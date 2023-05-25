@@ -1,13 +1,18 @@
 const express = require('express')
 const UserController = require('./user.controller')
 
-class RouterController {
-    constructor(){
-        this.userController = new UserController() 
+class RouterController
+{
+    constructor()
+    {
+        this.userController = new UserController()
     }
-    // Creates the server. 
-    create(){
-        return new Promise(res => {
+
+    // Creates the server.
+    create()
+    {
+        return new Promise(res =>
+        {
             // Import the router library.
             const router = express.Router()
             // Configure every route, then resolve the promise.
