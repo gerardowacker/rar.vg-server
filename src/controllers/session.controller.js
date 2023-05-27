@@ -59,7 +59,7 @@ class SessionController
                     else return res({
                         status: 200,
                         content: {
-                            id: this.cachePool.get(token).User_id,
+                            id: this.cachePool.get(token).id,
                             token: token
                         }
                     })
