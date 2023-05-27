@@ -3,6 +3,8 @@ const {v4: uuid} = require('uuid')
 
 class SessionController
 {
+    cachePool = new Map()
+
     generate(userId, previousToken)
     {
         return new Promise(res =>
@@ -45,6 +47,23 @@ class SessionController
     {
         return new Promise(res =>
             {
+                // If the token is saved in the cache map, then get it instead of contacting the database.
+                if (this.cachePool.has(token))
+                {
+                    const tokenContent = this.cachePool.get(token)
+                    // If the cache has expired, just delete it and proceed with the query.
+                    if (Date.now() > tokenContent.expires)
+                    {
+                        this.cachePool.delete(token)
+                    }
+                    else return res({
+                        status: 200,
+                        content: {
+                            id: this.cachePool.get(token).User_id,
+                            token: token
+                        }
+                    })
+                }
                 Session.findOne({token: token}).then(session =>
                 {
                     if (!session)
@@ -63,6 +82,10 @@ class SessionController
                             {
                                 return res(result)
                             }
+                            this.cachePool.set(result.content.token, {
+                                id: session.User_id,
+                                expires: Date.now() + (1000 * 60 * 30)
+                            })
                             res({
                                 status: 200,
                                 content: {
@@ -74,6 +97,10 @@ class SessionController
                     }
                     else
                     {
+                        this.cachePool.set(token, {
+                            id: session.User_id,
+                            expires: Date.now() + (1000 * 60 * 30)
+                        })
                         res({
                             status: 200,
                             content: {
