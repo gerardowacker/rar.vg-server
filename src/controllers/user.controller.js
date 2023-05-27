@@ -43,6 +43,11 @@ class UserController
         {
             User.findOne({email: data.email}).then(user =>
             {
+                if(!user)
+                    return res({
+                        status: 400,
+                        content: 'The provided email or password are incorrect.'
+                    })
                 bcrypt.compare(data.password, user.password, (err, result) =>
                 {
                     if (err) return res({
@@ -51,7 +56,7 @@ class UserController
                     })
                     if (!result) return res({
                         status: 403,
-                        content: "The username or password are incorrect. Try again."
+                        content: "The provided email or password are incorrect."
                     })
                     this.sessionController.generate(user.id, null).then(session =>
                     {
