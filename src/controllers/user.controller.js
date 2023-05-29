@@ -50,7 +50,7 @@ class UserController
             {
                 if (!user)
                     return res({
-                        status: 400,
+                        status: 403,
                         content: 'The provided email or password are incorrect.'
                     })
                 bcrypt.compare(data.password, user.password, (err, result) =>
