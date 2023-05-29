@@ -66,21 +66,31 @@ module.exports = class User
 
             argument = argument + 'WHERE id = ' + this.id
 
-            db.execute(argument, (err, result) =>
+            db.query(argument).then((result) =>
             {
-                if (!err)
-                {
-                    this.username = values['username'] || this.username
-                    this.password = values['password'] || this.password
-                    this.displayName = values['displayName'] || this.displayName
-                    this.email = values['email'] || this.email
-                    this.creationDate = values['creationDate'] || this.creationDate
-                    this.dateOfBirth = values['dateOfBirth'] || this.dateOfBirth
-                    this.sociallinks = values['sociallinks'] || this.sociallinks
-                    this.components = values['components'] || this.components
-                }
 
-                res(result)
+                this.username = values['username'] || this.username
+                this.password = values['password'] || this.password
+                this.displayName = values['displayName'] || this.displayName
+                this.email = values['email'] || this.email
+                this.creationDate = values['creationDate'] || this.creationDate
+                this.dateOfBirth = values['dateOfBirth'] || this.dateOfBirth
+                this.sociallinks = values['sociallinks'] || this.sociallinks
+                this.components = values['components'] || this.components
+
+                res({
+                    status: 200,
+                    content: result
+                })
+            }).catch(err =>
+            {
+                if (err)
+                {
+                    return res({
+                        status: 500,
+                        content: err
+                    })
+                }
             })
         })
     }
