@@ -1,4 +1,6 @@
 /.idea
+/public/avatars/*
+/public/userfiles/*
 
 lazygit.exe
 # Logs
