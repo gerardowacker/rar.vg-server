@@ -26,6 +26,8 @@ class RouterController
             router.post('/register', (req, res) => this.userController.register(req.body).then(result => res.send(result)))
             router.post('/login', (req, res) => this.userController.login(req.body).then(result => res.send(result)))
             router.post('/validate', (req, res) => this.sessionController.validate(req.body.token, req.body.clientToken).then(result => res.send(result)))
+            router.post('/updateComponents', (req, res) => this.userController.updateComponents(req.body.token, req.body.clientToken, req.body.components).then(result => res.send(result)))
+            router.post('/updateLinks', (req, res) => this.userController.updateLinks(req.body.token, req.body.clientToken, req.body.links).then(result => res.send(result)))
             res(router)
         })
     }
