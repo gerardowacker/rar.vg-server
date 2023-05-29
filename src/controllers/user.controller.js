@@ -41,9 +41,14 @@ class UserController
     {
         return new Promise(res =>
         {
+            if (!data.email || !data.password)
+                return res({
+                    status: 400,
+                    content: 'Missing parameters'
+                })
             User.findOne({email: data.email}).then(user =>
             {
-                if(!user)
+                if (!user)
                     return res({
                         status: 400,
                         content: 'The provided email or password are incorrect.'
@@ -65,6 +70,8 @@ class UserController
                         res({
                             status: 200,
                             content: {
+                                token: session.content.token,
+                                clientToken: session.content.clientToken,
                                 user: {
                                     id: user.id,
                                     username: user.username,
@@ -84,6 +91,11 @@ class UserController
     {
         return new Promise(async res =>
         {
+            if (!data.username || !data.email || !data.password || !data.dateOfBirth || !data.displayName)
+                return res({
+                    status: 400,
+                    content: 'Missing parameters'
+                })
             User.findOne({username: data.username.toLowerCase()}, {email: data.email.toLowerCase()}).then(user =>
             {
                 if (user)
