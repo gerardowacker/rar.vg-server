@@ -36,11 +36,21 @@ module.exports = class FileController
                     })
                 if (avatar)
                 {
+                    if (fileExtension !== "png" && fileExtension !== "jpg" && fileExtension !== "webp")
+                        return res({
+                            status: 400,
+                            content: "File format is not allowed."
+                        })
                     const id = sessionResult.content.id
                     uploadPath = root + '/public/avatars/' + id + '.png';
                 }
                 else
                 {
+                    if (fileExtension !== "png" && fileExtension !== "jpg" && fileExtension !== "webp" && fileExtension !== "pdf")
+                        return res({
+                            status: 400,
+                            content: "File format is not allowed."
+                        })
                     uploadPath = root + '/public/userfiles/' + newFileName;
                 }
 
@@ -54,7 +64,7 @@ module.exports = class FileController
 
                     res({
                         status: 200,
-                        content: newFileName
+                        content: avatar ? 'Uploaded successfully.' : newFileName
                     })
                 })
             })
