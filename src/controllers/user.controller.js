@@ -17,7 +17,7 @@ class UserController
             {
                 if (!user)
                     return res({
-                        status: 400,
+                        status: 404,
                         content: 'There is no user with that username.'
                     })
 
