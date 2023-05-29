@@ -138,6 +138,95 @@ class UserController
         })
     }
 
+    updateLinks(token, clientToken, links)
+    {
+        return new Promise(res =>
+        {
+            if (!links || !token || !clientToken)
+                return res({
+                    status: 400,
+                    content: 'Missing parameters.'
+                })
+            try
+            {
+                this.sessionController.validate(token, clientToken).then(sessionResult =>
+                {
+                    if (sessionResult.status !== 200)
+                        return res(sessionResult)
+                    User.findOne({id: sessionResult.content.id}).then(user =>
+                    {
+                        if (!user)
+                            return res({
+                                status: 500,
+                                content: 'There was an error within the current session. Please log in again.'
+                            })
+                        user.update({sociallinks: links}).then(updateResult =>
+                        {
+                            if (updateResult.status !== 200)
+                                return res(updateResult)
+                            res({
+                                status: 200,
+                                content: 'The social links were updated successfully.'
+                            })
+                        })
+                    })
+                })
+            }
+            catch (err)
+            {
+                return res({
+                    status: 500,
+                    content: 'An unknown error has occurred.'
+                })
+            }
+        })
+    }
+
+    updateComponents(token, clientToken, components)
+    {
+        return new Promise(res =>
+        {
+            if (!components || !token || !clientToken)
+                return res({
+                    status: 400,
+                    content: 'Missing parameters.'
+                })
+            try
+            {
+                this.sessionController.validate(token, clientToken).then(sessionResult =>
+                {
+                    if (sessionResult.status !== 200)
+                        return res(sessionResult)
+                    User.findOne({id: sessionResult.content.id}).then(user =>
+                    {
+                        if (!user)
+                            return res({
+                                status: 500,
+                                content: 'There was an error within the current session. Please log in again.'
+                            })
+                        user.update({components: components}).then(updateResult =>
+                        {
+                            if (updateResult.status !== 200)
+                                return res(updateResult)
+                            res({
+                                status: 200,
+                                content: 'The components were updated successfully.'
+                            })
+                        })
+                    })
+                })
+            }
+            catch (err)
+            {
+                console.log(err)
+                return res({
+                    status: 500,
+                    content: 'An unknown error has occurred.'
+                })
+            }
+        })
+    }
+
     test()
     {
         return new Promise(async res =>
