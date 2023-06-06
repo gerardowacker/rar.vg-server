@@ -227,6 +227,46 @@ class UserController
         })
     }
 
+    getUser(token, clientToken)
+    {
+        return new Promise(res =>
+        {
+            if (!token || !clientToken)
+                return res({
+                    status: 400,
+                    content: 'Missing parameters.'
+                })
+            try
+            {
+                this.sessionController.validate(token, clientToken).then(sessionResult =>
+                {
+                    if (sessionResult.status !== 200)
+                        return res(sessionResult)
+                    User.findOne({id: sessionResult.content.id}).then(user =>
+                    {
+                        if (!user)
+                            return res({
+                                status: 500,
+                                content: 'There was an error within the current session. Please log in again.'
+                            })
+                        delete user.password
+                        return res({
+                            status: 200,
+                            content: user
+                        })
+                    })
+                })
+            }
+            catch (err)
+            {
+                return res({
+                    status: 500,
+                    content: 'An unknown error has occurred.'
+                })
+            }
+        })
+    }
+
     test()
     {
         return new Promise(async res =>
