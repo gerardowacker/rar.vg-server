@@ -29,14 +29,14 @@ module.exports = class FileController
                 const fileExtension = file.name.split(".").pop()
                 const newFileName = this.#generateString() + '.' + fileExtension
                 let uploadPath;
-                if (fileExtension !== "png" && fileExtension !== "jpg" && fileExtension !== "webp" && fileExtension !== "pdf")
+                if (fileExtension !== "jpeg" && fileExtension !== "png" && fileExtension !== "jpg" && fileExtension !== "webp" && fileExtension !== "pdf")
                     return res({
                         status: 400,
                         content: "File format is not allowed."
                     })
                 if (avatar)
                 {
-                    if (fileExtension !== "png" && fileExtension !== "jpg" && fileExtension !== "webp")
+                    if (fileExtension !== "jpeg" && fileExtension !== "png" && fileExtension !== "jpg" && fileExtension !== "webp")
                         return res({
                             status: 400,
                             content: "File format is not allowed."
