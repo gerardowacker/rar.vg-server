@@ -130,7 +130,7 @@ class UserController
 
                         res({
                             status: 200,
-                            content: 'The user was registered successfully.'
+                            content: {response: 'The user was registered successfully.'}
                         })
                     })
                 })
