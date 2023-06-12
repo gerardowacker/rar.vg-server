@@ -29,7 +29,7 @@ module.exports = class User
             let subargument = (i === 0 ? ' (' : ' OR (')
             for (let j = 0; j < queryKeys.length; j++)
             {
-                subargument = subargument + ((j === 0 ? ' ' : ' AND ') + queryKeys[j] + ' = \'' + match[queryKeys] + '\'')
+                subargument = subargument + ((j === 0 ? ' ' : ' AND ') + queryKeys[j] + ' = \'' + match[queryKeys[j]] + '\'')
             }
             subargument = subargument + ")"
             argument = argument + subargument
@@ -61,10 +61,10 @@ module.exports = class User
 
             for (let i = 0; i < valueKeys.length; i++)
             {
-                argument = argument + ((i === 0 ? ' ' : ', ') + valueKeys[i] + ' = \'' + values[valueKeys] + '\'')
+                argument = argument + ((i === 0 ? ' ' : ', ') + valueKeys[i] + ' = \'' + values[valueKeys[i]] + '\'')
             }
 
-            argument = argument + 'WHERE id = ' + this.id
+            argument = argument + ' WHERE id = ' + this.id
 
             db.query(argument).then((result) =>
             {
