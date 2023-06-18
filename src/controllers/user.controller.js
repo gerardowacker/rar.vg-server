@@ -167,7 +167,7 @@ class UserController
                                 return res(updateResult)
                             res({
                                 status: 200,
-                                content: {message: 'Updated successfully.'}
+                                content: {token: token, message: 'Updated successfully.'}
                             })
                         })
                     })
@@ -209,7 +209,7 @@ class UserController
                         delete user.password
                         return res({
                             status: 200,
-                            content: user
+                            content: {token: token, user: user}
                         })
                     })
                 })
