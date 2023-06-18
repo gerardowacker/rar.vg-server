@@ -30,7 +30,7 @@ class WebController
             app.set("trust proxy", true)
 
             // Static stuff.
-            app.use('/avatar', express.static(root + '/public/avatars'));
+            app.use('/avatar', express.static(root + '/public/avatars', {fallthrough: true}));
             app.use('/uploads', express.static(root + '/public/userfiles'));
 
             // Create the router, and implement it into the server.

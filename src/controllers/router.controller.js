@@ -2,6 +2,8 @@ const express = require('express')
 const UserController = require('./user.controller')
 const FileController = require('./file.controller')
 const SessionController = require('./session.controller')
+const path = require("path");
+const root = path.normalize(path.join(path.dirname(require.main.filename), '..'))
 
 class RouterController
 {
@@ -22,6 +24,7 @@ class RouterController
             // Configure every route, then resolve the promise.
             router.get('/', (req, res) => res.send("la curiosidad mató al gato"))
             router.get('/profile/:user', (req, res) => this.userController.getProfile(req.params.user).then(result => res.status(result.status).send(result.content)))
+            router.get('/avatar/:user', (req, res) => res.sendFile(root + '/public/avatars/default.png'))
             router.post('/files/upload', (req, res) => this.fileController.upload(req.files, req.body.token, req.body.clientToken, req.body.avatar === '1').then(result => res.status(result.status).send(result.content)))
             router.post('/register', (req, res) => this.userController.register(req.body).then(result => res.status(result.status).send(result.content)))
             router.post('/login', (req, res) => this.userController.login(req.body).then(result => res.status(result.status).send(result.content)))
