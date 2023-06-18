@@ -68,7 +68,7 @@ class SessionController
                 {
                     if (!session)
                         return res({
-                            status: 400,
+                            status: 498,
                             content: 'Invalid token. Log in again.'
                         })
                     const expiresDate = new Date(session.expires)
