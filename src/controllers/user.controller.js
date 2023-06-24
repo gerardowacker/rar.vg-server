@@ -3,10 +3,12 @@ const bcrypt = require('bcrypt')
 
 class UserController
 {
+    verificationTokens = new Map()
 
-    constructor(sessionController)
+    constructor(sessionController, emailController)
     {
         this.sessionController = sessionController
+        this.emailController = emailController
     }
 
     getProfile(username)
@@ -118,20 +120,68 @@ class UserController
                             content: 'There was an error while creating the account. [u2]'
                         })
 
-                    const newUser = new User(null, data.username.toLowerCase(), hash, data.displayName, data.email.toLowerCase(),
-                        new Date(Date.now()).toISOString().split('T')[0], data.dateOfBirth, [], [])
-                    newUser.insert().then((result, err) =>
-                    {
-                        if (err)
-                            return res({
-                                status: 500,
-                                content: 'There was an error while creating the account. [u3]'
-                            })
+                    // Generate verification token
+                    const verificationToken = this.#generateString(32)
+                    this.verificationTokens.set(verificationToken, {
+                        username: data.username.toLowerCase(),
+                        password: hash,
+                        displayName: data.displayName,
+                        email: data.email.toLowerCase(),
+                        creationDate: new Date(Date.now()).toISOString().split('T')[0],
+                        dateOfBirth: data.dateOfBirth
+                    })
 
-                        res({
+                    this.emailController.connect().then(conn => conn.send('Verify your rar.vg account',
+                        'Thank you for registering!\nTo verify your account, click on this link: https://www.rar.vg/verify?vt=' + verificationToken,
+                        data.email.toLowerCase()).then(result =>
+                    {
+                        return res({
                             status: 200,
-                            content: {response: 'The user was registered successfully.'}
+                            content: {response: 'The email was sent successfully.'}
                         })
+                    }))
+                })
+            })
+        })
+    }
+
+    verifyAccount(token)
+    {
+        return new Promise(res =>
+        {
+            if (!this.verificationTokens.has(token))
+                return res({
+                    status: 403,
+                    content: 'The provided token is invalid.'
+                })
+
+            const user = this.verificationTokens.get(token)
+
+            User.findOne({username: user.username}, {email: user.email}).then(u =>
+            {
+                if (u)
+                {
+                    return res({
+                        status: 400,
+                        content: 'While you were verifying your account, another user has registered with those credentials.'
+                    })
+                }
+
+                const newUser = new User(null, user.username, user.password, user.displayName, user.email,
+                    user.creationDate, user.dateOfBirth, [], [])
+                newUser.insert().then((result, err) =>
+                {
+                    if (err)
+                        return res({
+                            status: 500,
+                            content: 'There was an error while creating the account. [u3]'
+                        })
+
+                    this.verificationTokens.delete(token)
+
+                    return res({
+                        status: 200,
+                        content: {response: 'The user was verified successfully.'}
                     })
                 })
             })
@@ -224,33 +274,18 @@ class UserController
         })
     }
 
-    test()
+    #generateString(length)
     {
-        return new Promise(async res =>
+        let result = '';
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+        const charactersLength = characters.length;
+        let counter = 0;
+        while (counter < length)
         {
-            const newUser = new User(null, "juani", "passwdtest", "juanchi", "jv@test.com", "2023-05-25", "2000-01-01", [], [])
-            newUser.insert().then(() =>
-            {
-                try
-                {
-                    User.findOne({username: "juani"}).then(u =>
-                    {
-                        console.log(u)
-                        u.update({password: "pruebapasswd"}).then(updated =>
-                        {
-                            console.log(updated)
-                            res("jaja")
-                        })
-
-                    })
-                }
-                catch (error)
-                {
-                    console.error(error)
-                }
-
-            })
-        })
+            result += characters.charAt(Math.floor(Math.random() * charactersLength));
+            counter += 1;
+        }
+        return result;
     }
 }
 
