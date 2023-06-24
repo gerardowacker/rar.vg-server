@@ -2,6 +2,7 @@ const express = require('express')
 const UserController = require('./user.controller')
 const FileController = require('./file.controller')
 const SessionController = require('./session.controller')
+const EmailController = require('./email.controller')
 const path = require("path");
 const root = path.normalize(path.join(path.dirname(require.main.filename), '..'))
 
@@ -9,8 +10,9 @@ class RouterController
 {
     constructor()
     {
+        this.emailController = new EmailController()
         this.sessionController = new SessionController()
-        this.userController = new UserController(this.sessionController)
+        this.userController = new UserController(this.sessionController, this.emailController)
         this.fileController = new FileController(this.sessionController)
     }
 
@@ -31,6 +33,7 @@ class RouterController
             router.post('/validate', (req, res) => this.sessionController.validate(req.body.token, req.body.clientToken).then(result => res.status(result.status).send(result.content)))
             router.post('/update', (req, res) => this.userController.updateProfile(req.body.token, req.body.clientToken, req.body.components, req.body.sociallinks).then(result => res.status(result.status).send(result.content)))
             router.post('/getUser', (req, res) => this.userController.getUser(req.body.token, req.body.clientToken).then(result => res.status(result.status).send(result.content)))
+            router.post('/verify', (req, res) => this.userController.verifyAccount(req.body.token).then(result => res.status(result.status).send(result.content)))
             res(router)
         })
     }
