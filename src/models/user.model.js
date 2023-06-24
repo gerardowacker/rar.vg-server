@@ -21,6 +21,7 @@ module.exports = class User
     static find(..._matches)
     {
         const matches = _matches[0]
+        const values = []
         let argument = 'SELECT id, username, password, displayName, email, creationDate, dateOfBirth, components, sociallinks FROM Users WHERE'
         for (let i = 0; i < matches.length; i++)
         {
@@ -29,12 +30,13 @@ module.exports = class User
             let subargument = (i === 0 ? ' (' : ' OR (')
             for (let j = 0; j < queryKeys.length; j++)
             {
-                subargument = subargument + ((j === 0 ? ' ' : ' AND ') + queryKeys[j] + ' = \'' + match[queryKeys[j]] + '\'')
+                values.push(match[queryKeys[j]])
+                subargument = subargument + ((j === 0 ? ' ' : ' AND ') + queryKeys[j] + ' = ?')
             }
             subargument = subargument + ")"
             argument = argument + subargument
         }
-        return db.execute(argument)
+        return db.execute(argument, values)
     }
 
     static async findOne(...matches)
@@ -58,15 +60,18 @@ module.exports = class User
         {
             let valueKeys = Object.keys(values)
             let argument = 'UPDATE Users SET'
+            const qVal = []
 
             for (let i = 0; i < valueKeys.length; i++)
             {
-                argument = argument + ((i === 0 ? ' ' : ', ') + valueKeys[i] + ' = \'' + values[valueKeys[i]] + '\'')
+                qVal.push(values[valueKeys[i]])
+                argument = argument + ((i === 0 ? ' ' : ', ') + valueKeys[i] + ' = ?')
             }
 
-            argument = argument + ' WHERE id = ' + this.id
+            qVal.push(this.id)
+            argument = argument + ' WHERE id = ?'
 
-            db.query(argument).then((result) =>
+            db.query(argument, qVal).then((result) =>
             {
 
                 this.username = values['username'] || this.username
@@ -103,8 +108,7 @@ module.exports = class User
     insert()
     {
         if (this.#isSQLSynced) return
-        return db.execute("INSERT INTO Users (username, password, displayName, creationDate, dateOfBirth, socialLinks, email, components) VALUES ('" +
-            this.username + "', '" + this.password + "', '" + this.displayName + "', '" + this.creationDate + "', '" + this.dateOfBirth + "', '" +
-            JSON.stringify(this.sociallinks) + "', '" + this.email + "', '" + JSON.stringify(this.components) + "')")
+        return db.execute("INSERT INTO Users (username, password, displayName, creationDate, dateOfBirth, socialLinks, email, components) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [this.username, this.password, this.displayName, this.creationDate, this.dateOfBirth, JSON.stringify(this.sociallinks), this.email, JSON.stringify(this.components)])
     }
 }
