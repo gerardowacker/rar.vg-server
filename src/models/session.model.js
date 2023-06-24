@@ -18,6 +18,7 @@ class Session
     {
         const matches = _matches[0]
         let argument = 'SELECT id, token, expires, clientToken, User_id FROM Sessions WHERE'
+        const values = []
         for (let i = 0; i < matches.length; i++)
         {
             let match = matches[i]
@@ -25,24 +26,25 @@ class Session
             let subargument = (i === 0 ? ' (' : ' OR (')
             for (let j = 0; j < queryKeys.length; j++)
             {
-                subargument = subargument + ((j === 0 ? ' ' : ' AND ') + queryKeys[j] + ' = \'' + match[queryKeys] + '\'')
+                values.push(match[queryKeys[j]])
+                subargument = subargument + ((j === 0 ? ' ' : ' AND ') + queryKeys[j] + ' = ?')
             }
             subargument = subargument + ")"
             argument = argument + subargument
         }
-        return db.execute(argument)
+        return db.execute(argument, values)
     }
 
     insert()
     {
         if (!this.#isSQLSynced)
-        return db.execute("INSERT INTO Sessions (token, expires, clientToken, User_id) VALUES ('" +
-            this.token + "', '" + this.expires + "', '" + this.clientToken + "', '" + this.User_id + "')")
+            return db.execute("INSERT INTO Sessions (token, expires, clientToken, User_id) VALUES (?, ?, ?, ?)",
+                [this.token, this.expires, this.clientToken, this.User_id])
     }
 
     async delete()
     {
-        return db.execute('DELETE FROM Sessions WHERE id = ' + this.id)
+        return db.execute('DELETE FROM Sessions WHERE id = ?', [this.id])
     }
 
     static async findOne(...matches)
