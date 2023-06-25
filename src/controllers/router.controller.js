@@ -34,6 +34,9 @@ class RouterController
             router.post('/update', (req, res) => this.userController.updateProfile(req.body.token, req.body.clientToken, req.body.components, req.body.sociallinks).then(result => res.status(result.status).send(result.content)))
             router.post('/getUser', (req, res) => this.userController.getUser(req.body.token, req.body.clientToken).then(result => res.status(result.status).send(result.content)))
             router.post('/verify', (req, res) => this.userController.verifyAccount(req.body.token).then(result => res.status(result.status).send(result.content)))
+            router.post('/request-password-change', (req, res) => this.userController.requestPasswordChange(req.body.email).then(result => res.status(result.status).send(result.content)))
+            router.post('/verify-password-token', (req, res) => this.userController.verifyPasswordToken(req.body.token).then(result => res.status(result.status).send(result.content)))
+            router.post('/update-password', (req, res) => this.userController.updatePassword(req.body.token, req.body.password).then(result => res.status(result.status).send(result.content)))
             res(router)
         })
     }

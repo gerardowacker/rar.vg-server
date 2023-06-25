@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt')
 class UserController
 {
     verificationTokens = new Map()
+    passwordResetTokens = new Map()
 
     constructor(sessionController, emailController)
     {
@@ -140,6 +141,94 @@ class UserController
                             content: {response: 'The email was sent successfully.'}
                         })
                     }))
+                })
+            })
+        })
+    }
+
+    requestPasswordChange(email)
+    {
+        return new Promise(res =>
+        {
+            if (!email)
+                return res({status: 400, content: "Missing email."})
+
+            User.findOne({email: email}).then(user =>
+            {
+                if (user)
+                {
+                    const resetToken = this.#generateString(32)
+                    this.passwordResetTokens.set(resetToken, user.id)
+
+                    this.emailController.connect().then(client =>
+                    {
+                        client.send('Reset your rar.vg password',
+                            'A password change to the rar.vg account associated with this email has been requested.\n' +
+                            'If it wasn\'t you, ignore this email.\n' +
+                            'If it was you, use the following link to reset your password: https://www.rar.vg/change-password?t=' + resetToken,
+                            email)
+                    })
+                }
+
+                return res({
+                    status: 200,
+                    content: {response: 'If an account is associated with that address, an email with the request has been sent.'}
+                })
+            })
+        })
+    }
+
+    verifyPasswordToken(token)
+    {
+        return new Promise(res =>
+        {
+            if (!this.passwordResetTokens.has(token))
+                return res({
+                    status: 403,
+                    content: "The provided token is invalid. Request a new password change."
+                })
+
+            return res({
+                status: 200,
+                content: {response: 'Curiosity killed the cat'}
+            })
+        })
+    }
+
+    updatePassword(token, password)
+    {
+        return new Promise(res =>
+        {
+            if (!password || !token)
+                return res({status: 400, content: "Missing parameters."})
+
+            if (!this.passwordResetTokens.has(token))
+                return res({status: 403, content: "Token is invalid."})
+
+            const id = this.passwordResetTokens.get(token)
+            User.findOne({id: id}).then(user =>
+            {
+                if (!user)
+                    return res({status: 500, content: "Token was linked to a nonexistent user."})
+                bcrypt.hash(password.trim(), 5, (err, hash) =>
+                {
+                    if (err)
+                        return res({
+                            status: 500,
+                            content: 'There was an error while updating the password.'
+                        })
+
+                    user.update({password: hash}).then(result =>
+                    {
+                        if (result.status !== 200)
+                            return res(result)
+
+                        this.passwordResetTokens.delete(token)
+                        return res({
+                            status: 200,
+                            content: {message: 'Updated successfully.'}
+                        })
+                    })
                 })
             })
         })
@@ -289,4 +378,5 @@ class UserController
     }
 }
 
-module.exports = UserController
+module
+    .exports = UserController
