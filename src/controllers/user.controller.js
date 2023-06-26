@@ -279,11 +279,11 @@ class UserController
     }
 
 
-    updateProfile(token, clientToken, components, sociallinks)
+    updateProfile(token, clientToken, displayName, components, sociallinks)
     {
         return new Promise(res =>
         {
-            if (!components || !token || !clientToken)
+            if (!components || !token || !clientToken || !displayName)
                 return res({
                     status: 400,
                     content: 'Missing parameters.'
@@ -301,7 +301,7 @@ class UserController
                                 status: 500,
                                 content: 'There was an error within the current session. Please log in again.'
                             })
-                        user.update({components: components, sociallinks: sociallinks}).then(updateResult =>
+                        user.update({displayName: displayName, components: components, sociallinks: sociallinks}).then(updateResult =>
                         {
                             if (updateResult.status !== 200)
                                 return res(updateResult)
