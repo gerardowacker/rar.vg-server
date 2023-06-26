@@ -100,6 +100,29 @@ module.exports = class User
         })
     }
 
+    delete()
+    {
+        return new Promise(res =>
+        {
+            return db.query('CALL deleteUserWithSessions(?)', [this.id]).then(result =>
+            {
+                res({
+                    status: 200,
+                    content: {response: 'Deleted successfully.'}
+                })
+            }).catch(err =>
+            {
+                if (err)
+                {
+                    return res({
+                        status: 500,
+                        content: err
+                    })
+                }
+            })
+        })
+    }
+
     setSQLSynced(value)
     {
         this.#isSQLSynced = value
