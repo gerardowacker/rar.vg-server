@@ -37,6 +37,9 @@ class RouterController
             router.post('/request-password-change', (req, res) => this.userController.requestPasswordChange(req.body.email).then(result => res.status(result.status).send(result.content)))
             router.post('/verify-password-token', (req, res) => this.userController.verifyPasswordToken(req.body.token).then(result => res.status(result.status).send(result.content)))
             router.post('/update-password', (req, res) => this.userController.updatePassword(req.body.token, req.body.password).then(result => res.status(result.status).send(result.content)))
+            router.post('/deletion-request', (req, res) => this.userController.deletionRequest(req.body.token, req.body.clientToken, req.body.password).then(result => res.status(result.status).send(result.content)))
+            router.post('/verify-deletion-token', (req, res) => this.userController.verifyDeletionToken(req.body.token).then(result => res.status(result.status).send(result.content)))
+            router.post('/delete-account', (req, res) => this.userController.deleteAccount(req.body.token).then(result => res.status(result.status).send(result.content)))
             res(router)
         })
     }

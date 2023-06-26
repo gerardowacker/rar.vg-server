@@ -5,6 +5,7 @@ class UserController
 {
     verificationTokens = new Map()
     passwordResetTokens = new Map()
+    deletionTokens = new Map()
 
     constructor(sessionController, emailController)
     {
@@ -360,6 +361,105 @@ class UserController
                     content: 'An unknown error has occurred.'
                 })
             }
+        })
+    }
+
+    deletionRequest(token, clientToken, password)
+    {
+        return new Promise(res =>
+        {
+            if (!token || !clientToken || !password)
+                return res({
+                    status: 400,
+                    content: 'Missing parameters.'
+                })
+
+            this.sessionController.validate(token, clientToken).then(sessionResult =>
+            {
+                if (sessionResult.status !== 200)
+                    return res(sessionResult)
+
+                User.findOne({id: sessionResult.content.id}).then(user =>
+                {
+                    if (!user)
+                        return res({
+                            status: 500,
+                            content: 'There was an error within the current session. Please log in again.'
+                        })
+
+                    bcrypt.compare(password, user.password, (err, result) =>
+                    {
+                        if (err) return res({
+                            status: 500,
+                            content: "There was an error. [d1]"
+                        })
+                        if (!result) return res({
+                            status: 403,
+                            content: "The provided password is incorrect."
+                        })
+
+                        const deletionToken = this.#generateString(32)
+                        this.deletionTokens.set(deletionToken, user.id)
+
+                        this.emailController.connect().then(conn => conn.send('rar.vg Account deletion',
+                            'An account deletion request has been received.\n' +
+                            'If it wasn\'t you, then your password may be compromised. Be sure to change it by clicking this link: https://www.rar.vg/forgot-password\n' +
+                            'If it was you, click on this link to confirm account deletion: https://www.rar.vg/verify-account-deletion?t=' + deletionToken,
+                            user.email).then(result =>
+                        {
+                            return res({
+                                status: 200,
+                                content: {response: 'The email was sent successfully.'}
+                            })
+                        }))
+                    })
+                })
+            })
+        })
+    }
+
+    verifyDeletionToken(token)
+    {
+        return new Promise(res =>
+        {
+            if (!this.deletionTokens.has(token))
+                return res({
+                    status: 403,
+                    content: "The provided token is invalid. Try again."
+                })
+
+            return res({
+                status: 200,
+                content: {response: 'Curiosity killed the cat'}
+            })
+        })
+    }
+
+    deleteAccount(token)
+    {
+        return new Promise(res =>
+        {
+            if (!token)
+                return res({status: 400, content: "Missing parameters."})
+
+            if (!this.deletionTokens.has(token))
+                return res({status: 403, content: "Token is invalid."})
+
+            const id = this.deletionTokens.get(token)
+
+            User.findOne({id: id}).then(user =>
+            {
+                if(!user)
+                    return res({
+                        status: 500,
+                        content: 'There was an error with the current request. Try again.'
+                    })
+
+                user.delete().then(result =>
+                {
+                    res(result)
+                })
+            })
         })
     }
 
