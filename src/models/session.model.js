@@ -47,6 +47,26 @@ class Session
         return db.execute('DELETE FROM Sessions WHERE id = ?', [this.id])
     }
 
+    static deleteMany(...matches)
+    {
+        const values = []
+        let argument = 'DELETE FROM Sessions WHERE'
+        for (let i = 0; i < matches.length; i++)
+        {
+            let match = matches[i]
+            let queryKeys = Object.keys(match)
+            let subargument = (i === 0 ? ' (' : ' OR (')
+            for (let j = 0; j < queryKeys.length; j++)
+            {
+                values.push(match[queryKeys[j]])
+                subargument = subargument + ((j === 0 ? ' ' : ' AND ') + queryKeys[j] + ' = ?')
+            }
+            subargument = subargument + ")"
+            argument = argument + subargument
+        }
+        return db.execute(argument, values)
+    }
+
     static async findOne(...matches)
     {
         const [sessions] = await Session.find(matches)
