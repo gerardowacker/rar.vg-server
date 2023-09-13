@@ -40,6 +40,7 @@ class RouterController
             router.post('/deletion-request', (req, res) => this.userController.deletionRequest(req.body.token, req.body.clientToken, req.body.password).then(result => res.status(result.status).send(result.content)))
             router.post('/verify-deletion-token', (req, res) => this.userController.verifyDeletionToken(req.body.token).then(result => res.status(result.status).send(result.content)))
             router.post('/delete-account', (req, res) => this.userController.deleteAccount(req.body.token).then(result => res.status(result.status).send(result.content)))
+            router.post('/logout', (req, res) => this.userController.logOut(req.body.token, req.body.clientToken, req.body.single).then(result => res.status(result.status).send(result.content)))
             res(router)
         })
     }
