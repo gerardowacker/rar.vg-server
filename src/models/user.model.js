@@ -4,7 +4,7 @@ module.exports = class User
 {
     #isSQLSynced;
 
-    constructor(id, username, password, displayName, email, creationDate, dateOfBirth, sociallinks, components)
+    constructor(id, username, password, displayName, email, creationDate, dateOfBirth, sociallinks, components, profileDesign)
     {
         this.id = id
         this.username = username
@@ -15,6 +15,7 @@ module.exports = class User
         this.sociallinks = sociallinks
         this.email = email
         this.components = components
+        this.profileDesign = profileDesign
         this.#isSQLSynced = false
     }
 
@@ -22,7 +23,7 @@ module.exports = class User
     {
         const matches = _matches[0]
         const values = []
-        let argument = 'SELECT id, username, password, displayName, email, creationDate, dateOfBirth, components, sociallinks FROM Users WHERE'
+        let argument = 'SELECT id, username, password, displayName, email, creationDate, dateOfBirth, components, sociallinks, profileDesign FROM Users WHERE'
         for (let i = 0; i < matches.length; i++)
         {
             let match = matches[i]
@@ -46,7 +47,7 @@ module.exports = class User
         {
             const user = users[0]
 
-            const u = new User(user.id, user.username, user.password, user.displayName, user.email, user.creationDate, user.dateOfBirth, user.sociallinks, user.components)
+            const u = new User(user.id, user.username, user.password, user.displayName, user.email, user.creationDate, user.dateOfBirth, user.sociallinks, user.components, user.profileDesign)
             u.setSQLSynced(true)
 
             return u
@@ -82,6 +83,7 @@ module.exports = class User
                 this.dateOfBirth = values['dateOfBirth'] || this.dateOfBirth
                 this.sociallinks = values['sociallinks'] || this.sociallinks
                 this.components = values['components'] || this.components
+                this.profileDesign = values['profileDesign'] || this.profileDesign
 
                 res({
                     status: 200,
@@ -131,7 +133,7 @@ module.exports = class User
     insert()
     {
         if (this.#isSQLSynced) return
-        return db.execute("INSERT INTO Users (username, password, displayName, creationDate, dateOfBirth, socialLinks, email, components) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            [this.username, this.password, this.displayName, this.creationDate, this.dateOfBirth, JSON.stringify(this.sociallinks), this.email, JSON.stringify(this.components)])
+        return db.execute("INSERT INTO Users (username, password, displayName, creationDate, dateOfBirth, socialLinks, email, components, profileDesign) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [this.username, this.password, this.displayName, this.creationDate, this.dateOfBirth, JSON.stringify(this.sociallinks), this.email, JSON.stringify(this.components)], JSON.stringify(this.profileDesign))
     }
 }
