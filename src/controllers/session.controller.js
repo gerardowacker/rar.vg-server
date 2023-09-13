@@ -143,6 +143,60 @@ class SessionController
         })
     }
 
+    destroy(token, clientToken, single)
+    {
+        return new Promise(res =>
+        {
+            Session.findOne({token: token}).then(session =>
+            {
+                if (!session)
+                    return res({status: 403, content: 'Token is invalid'})
+
+                if (session.clientToken !== clientToken)
+                {
+                    return res({
+                        status: 403,
+                        content: 'Client tokens do not match.'
+                    })
+                }
+
+                if (single)
+                    return session.delete().then(result =>
+                    {
+                        this.cachePool.delete(session.token)
+                        return res({
+                            status: 200,
+                            content: 'You\'ve logged out. The session was deleted successfully.'
+                        })
+                    }).catch(err =>
+                    {
+                        console.log(err)
+                        return res({
+                            status: 500,
+                            content: 'There has been an error.'
+                        })
+                    })
+
+                Session.deleteMany({User_id: session.User_id}).then(result =>
+                {
+                    this.cachePool.delete(session.token)
+                    return res({
+                        status: 200,
+                        content: 'You\'ve logged out of all devices. Wait up until 30 minutes for the changes to take effect.'
+                    })
+                }).catch(err =>
+                {
+                    console.log(err)
+                    return res({
+                        status: 500,
+                        content: 'There has been an error during execution.'
+                    })
+                })
+
+            })
+        })
+    }
+
     #generateString(length)
     {
         let result = '';
