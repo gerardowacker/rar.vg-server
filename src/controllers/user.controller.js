@@ -364,6 +364,23 @@ class UserController
         })
     }
 
+    logOut(token, clientToken, single)
+    {
+        return new Promise(res =>
+        {
+            if (!token || !clientToken || single == null)
+                return res({
+                    status: 400,
+                    content: 'Missing parameters.'
+                })
+
+            this.sessionController.destroy(token, clientToken, single).then(sessionResult =>
+            {
+                return res(sessionResult)
+            })
+        })
+    }
+
     deletionRequest(token, clientToken, password)
     {
         return new Promise(res =>
