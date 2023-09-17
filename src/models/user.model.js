@@ -133,7 +133,7 @@ module.exports = class User
     insert()
     {
         if (this.#isSQLSynced) return
-        return db.execute("INSERT INTO Users (username, password, displayName, creationDate, dateOfBirth, socialLinks, email, components, profileDesign) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        return db.execute("INSERT INTO Users (username, password, displayName, creationDate, dateOfBirth, socialLinks, email, components, profileDesign) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [this.username, this.password, this.displayName, this.creationDate, this.dateOfBirth, JSON.stringify(this.sociallinks), this.email, JSON.stringify(this.components)], JSON.stringify(this.profileDesign))
     }
 }
