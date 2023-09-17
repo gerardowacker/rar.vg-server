@@ -306,7 +306,7 @@ class UserController
                             displayName: displayName,
                             components: components,
                             sociallinks: sociallinks,
-                            profiledesign: profiledesign || {}
+                            profiledesign: {} // TODO: profileDesign
                         }).then(updateResult =>
                         {
                             if (updateResult.status !== 200)
