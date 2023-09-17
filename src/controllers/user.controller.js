@@ -284,7 +284,7 @@ class UserController
     {
         return new Promise(res =>
         {
-            if (!components || !token || !clientToken || !displayName || !sociallinks || !profiledesign)
+            if (!components || !token || !clientToken || !displayName || !sociallinks)
                 return res({
                     status: 400,
                     content: 'Missing parameters.'
@@ -302,7 +302,12 @@ class UserController
                                 status: 500,
                                 content: 'There was an error within the current session. Please log in again.'
                             })
-                        user.update({displayName: displayName, components: components, sociallinks: sociallinks, profiledesign}).then(updateResult =>
+                        user.update({
+                            displayName: displayName,
+                            components: components,
+                            sociallinks: sociallinks,
+                            profiledesign: profiledesign || {}
+                        }).then(updateResult =>
                         {
                             if (updateResult.status !== 200)
                                 return res(updateResult)
@@ -467,7 +472,7 @@ class UserController
 
             User.findOne({id: id}).then(user =>
             {
-                if(!user)
+                if (!user)
                     return res({
                         status: 500,
                         content: 'There was an error with the current request. Try again.'
@@ -497,4 +502,3 @@ class UserController
 }
 
 module
-    .exports = UserController
