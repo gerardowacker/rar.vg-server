@@ -501,4 +501,4 @@ class UserController
     }
 }
 
-module
+module.exports = UserController
