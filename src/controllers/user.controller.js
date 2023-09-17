@@ -313,7 +313,7 @@ class UserController
                                 return res(updateResult)
                             res({
                                 status: 200,
-                                content: {token: token, message: 'Updated successfully.'}
+                                content: {token: token, message: 'Profile was updated successfully.'}
                             })
                         })
                     })
