@@ -167,7 +167,7 @@ class SessionController
                         return res({
                             status: 200,
                             content: {
-                                response: 5
+                                code: 5
                             }
                         })
                     }).catch(err =>
@@ -185,7 +185,7 @@ class SessionController
                     return res({
                         status: 200,
                         content: {
-                            response: 4
+                            code: 4
                         }
                     })
                 }).catch(err =>
