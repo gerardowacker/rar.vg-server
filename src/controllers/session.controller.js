@@ -167,7 +167,7 @@ class SessionController
                         return res({
                             status: 200,
                             content: {
-                                response: 'You\'ve logged out. The session was deleted successfully.'
+                                response: 5
                             }
                         })
                     }).catch(err =>
@@ -185,7 +185,7 @@ class SessionController
                     return res({
                         status: 200,
                         content: {
-                            response: 'You\'ve logged out of all devices. Wait up until 30 minutes for the changes to take effect.'
+                            response: 4
                         }
                     })
                 }).catch(err =>
