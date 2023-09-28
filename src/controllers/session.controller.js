@@ -166,7 +166,9 @@ class SessionController
                         this.cachePool.delete(session.token)
                         return res({
                             status: 200,
-                            content: 'You\'ve logged out. The session was deleted successfully.'
+                            content: {
+                                response: 'You\'ve logged out. The session was deleted successfully.'
+                            }
                         })
                     }).catch(err =>
                     {
@@ -182,7 +184,9 @@ class SessionController
                     this.cachePool.delete(session.token)
                     return res({
                         status: 200,
-                        content: 'You\'ve logged out of all devices. Wait up until 30 minutes for the changes to take effect.'
+                        content: {
+                            response: 'You\'ve logged out of all devices. Wait up until 30 minutes for the changes to take effect.'
+                        }
                     })
                 }).catch(err =>
                 {
