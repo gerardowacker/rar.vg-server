@@ -45,6 +45,21 @@ class UserController
     {
         return new Promise(res =>
         {
+            return res({
+                status: 200,
+                content: {
+                    token: 'a',
+                    clientToken: 'a',
+                    user: {
+                        id: 1,
+                        username: 'pepito',
+                        displayName: 'a',
+                        components: [],
+                        sociallinks: [],
+                        profileDesign: {}
+                    }
+                }
+            })
             if (!data.email || !data.password)
                 return res({
                     status: 400,
@@ -333,6 +348,13 @@ class UserController
     {
         return new Promise(res =>
         {
+            return res({
+                status: 200,
+                content: {
+                    token: "asd",
+                    user: new User(1, 'pepito', 'aaa', 'pepe', 'cho@clo.com', '1970-01-01', '1970-01-01', [], [], [])
+                }
+            })
             if (!token || !clientToken)
                 return res({
                     status: 400,
