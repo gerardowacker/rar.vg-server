@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer')
 
-const config = require('../../config/config.json')
+const config = require('./config.util')
 
 module.exports = class EmailController
 {
@@ -10,12 +10,12 @@ module.exports = class EmailController
         {
             if (!this.transporter)
                 this.transporter = nodemailer.createTransport({
-                    host: config.MAIL_HOST,
+                    host: config('MAIL_HOST'),
                     port: 465,
                     secure: true,
                     auth: {
-                        user: config.MAIL_ADDRESS,
-                        pass: config.MAIL_PASSWORD
+                        user: config('MAIL_ADDRESS'),
+                        pass: config('MAIL_PASSWORD')
                     }
                 })
             res(this)
@@ -27,7 +27,7 @@ module.exports = class EmailController
         return new Promise(async res =>
         {
             let email = await this.transporter.sendMail({
-                from: `"${config.MAIL_ALIAS}" <${config.MAIL_ADDRESS}>`,
+                from: `"${config('MAIL_ALIAS')}" <${config('MAIL_ADDRESS')}>`,
                 to: recipient,
                 subject: subject,
                 text: body
