@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer')
 
-const config = require('./config.util')
+const config = require('../utils/config.util')
 
 module.exports = class EmailController
 {
