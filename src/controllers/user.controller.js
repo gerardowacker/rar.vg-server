@@ -259,7 +259,7 @@ class UserController
                 }
 
                 const newUser = new User(null, user.username, user.password, user.displayName, user.email,
-                    user.creationDate, user.dateOfBirth, [], [])
+                    user.creationDate, user.dateOfBirth, [], [], {})
                 newUser.insert().then((result, err) =>
                 {
                     if (err)
