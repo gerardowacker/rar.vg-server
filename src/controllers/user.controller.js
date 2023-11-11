@@ -307,7 +307,7 @@ class UserController
                             components: components,
                             sociallinks: sociallinks,
                         }
-                        user.update((profileDesign !== null ? {
+                        user.update((profileDesign != null ? {
                             ...defSyntax,
                             profileDesign: profileDesign
                         } : defSyntax)).then(updateResult =>
