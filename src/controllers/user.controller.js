@@ -307,7 +307,7 @@ class UserController
                             displayName: displayName,
                             components: components,
                             sociallinks: sociallinks,
-                            profDesSynt: profDesSyntax
+                            profDesSyntax
                         }).then(updateResult =>
                         {
                             if (updateResult.status !== 200)
