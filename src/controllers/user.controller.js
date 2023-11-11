@@ -259,7 +259,7 @@ class UserController
                 }
 
                 const newUser = new User(null, user.username, user.password, user.displayName, user.email,
-                    user.creationDate, user.dateOfBirth, [], [], {})
+                    user.creationDate, user.dateOfBirth, [], [], {design: 1, colour: 0})
                 newUser.insert().then((result, err) =>
                 {
                     if (err)
@@ -280,7 +280,7 @@ class UserController
     }
 
 
-    updateProfile(token, clientToken, displayName, components, sociallinks, profiledesign)
+    updateProfile(token, clientToken, displayName, components, sociallinks, profileDesign)
     {
         return new Promise(res =>
         {
@@ -302,10 +302,12 @@ class UserController
                                 status: 500,
                                 content: 'There was an error within the current session. Please log in again.'
                             })
+                        let profDesSynt = (profileDesign !== null ? {profileDesign: profileDesign} : null)
                         user.update({
                             displayName: displayName,
                             components: components,
                             sociallinks: sociallinks,
+                            profDesSynt
                         }).then(updateResult =>
                         {
                             if (updateResult.status !== 200)
@@ -501,3 +503,4 @@ class UserController
 }
 
 module.exports = UserController
+
