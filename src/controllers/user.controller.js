@@ -302,12 +302,12 @@ class UserController
                                 status: 500,
                                 content: 'There was an error within the current session. Please log in again.'
                             })
-                        let profDesSynt = (profileDesign !== null ? {profileDesign: profileDesign} : null)
+                        let profDesSyntax = (profileDesign !== null ? {profileDesign: profileDesign} : null)
                         user.update({
                             displayName: displayName,
                             components: components,
                             sociallinks: sociallinks,
-                            profDesSynt
+                            profDesSynt: profDesSyntax
                         }).then(updateResult =>
                         {
                             if (updateResult.status !== 200)
