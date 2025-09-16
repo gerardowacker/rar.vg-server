@@ -3,6 +3,7 @@ const UserController = require('./user.controller')
 const FileController = require('./file.controller')
 const SessionController = require('./session.controller')
 const EmailController = require('./email.controller')
+const AIController = require('./ai.controller')
 const path = require("path");
 const root = path.normalize(path.join(path.dirname(require.main.filename), '..'))
 
@@ -14,6 +15,7 @@ class RouterController
         this.sessionController = new SessionController()
         this.userController = new UserController(this.sessionController, this.emailController)
         this.fileController = new FileController(this.sessionController)
+        this.aiController = new AIController()
     }
 
     // Creates the server.
@@ -41,6 +43,10 @@ class RouterController
             router.post('/verify-deletion-token', (req, res) => this.userController.verifyDeletionToken(req.body.token).then(result => res.status(result.status).send(result.content)))
             router.post('/delete-account', (req, res) => this.userController.deleteAccount(req.body.token).then(result => res.status(result.status).send(result.content)))
             router.post('/logout', (req, res) => this.userController.logOut(req.body.token, req.body.clientToken, req.body.single).then(result => res.status(result.status).send(result.content)))
+            
+            // AI Chat routes
+            router.post('/ai/chat', (req, res) => this.aiController.processAIChat(req.body.message, req.body.context).then(result => res.status(result.status).send(result.content)))
+            
             res(router)
         })
     }
