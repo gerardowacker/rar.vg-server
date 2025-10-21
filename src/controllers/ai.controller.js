@@ -1,24 +1,135 @@
 const axios = require('axios');
 const logger = require('../utils/logger.util');
+const { parse } = require('dotenv');
 
 class AIController {
     constructor() {
         // Groq (OpenAI-compatible) configuration
         this.groqApiKey = process.env.GROQ_API_KEY || '';
-        // Default to a currently available model. You can override via GROQ_MODEL in .env
+        // default to a currently available model. You can override via GROQ_MODEL in .env
         this.groqModel = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
-        
+
         // Retry configuration for API reliability
         this.maxRetries = parseInt(process.env.GROQ_MAX_RETRIES) || 3;
         this.baseRetryDelay = parseInt(process.env.GROQ_RETRY_DELAY) || 1000; // 1 second
         this.requestTimeout = parseInt(process.env.GROQ_TIMEOUT) || 30000; // 30 seconds
-        
+
         // Rate limiting tracking
         this.rateLimitResetTime = null;
         this.rateLimitRemaining = null;
-        
+
         // Domain/system instruction to steer chat outputs
-        this.systemPrompt = `You're a chatbot that belongs to a web platform oriented to designing user profiles, by creating personal webpages for them, customisable via diverse modules, or components.\n\nThe platform contains 5 total components:\n - Generic component: Consisting of a title and description, with the option of skipping the title by leaving it blank, it allows the user to insert custom markdown content. Its structure is the following, replacing [TITLE] with the actual title, and [DESCRIPTION] with the actual description:\n{\n      \"type\": \"generic\",\n      \"content\": {\n        \"title\": \"[TITLE]\",\n        \"description\": \"[DESCRIPTION]\"\n      }\n}\n - Link list component: Allowing the user to input a maximum of five (5) links, with an optional link image, a link per se, and a title (can be left blank if you want the title to be the link by itself). The component's got 2 available designs: a vertical list, with each item consisting of an image, and its title; or a horizontal grid, with the icon being the main focused, and the title centered at the icon's bottom. The [VERTICAL] parameter represents a boolean, in which true means the first design, and false meaning the second design. \nIts structure is the following, replacing [LINK LIST] with a JSON list for each link object:\n{\n      \"type\": \"linklist\",\n      \"content\": {\n        \"links\": [LINK LIST],\n        \"vertical\": [VERTICAL]\n      }\n}\nEach link object follows the next structure:\n{\n            \"url\": \"[URL]\",\n            \"icon\": \"[ICON]\",\n            \"title\": \"[TITLE]\"\n}\nThe icon shall never be completed with images or files outside of the website itself, that's why you will never upload images, use generic assets, or use images in general. You will let the user complete them. The lack of [ICON] will be completed with null.\n - Spotify component: Allowing the user to input a Spotify playlist link, will autocomplete and display the Spotify embed per se. The component's structure will be the following, where [PLAYLIST-ID] shall be the actual id for the spotify playlist:\n{\n      \"type\": \"spotify\",\n      \"content\": \"[PLAYLIST-ID]\"\n}\n- YouTube component: Allows the user to add a YouTube video link, and will autocomplete the YouTube embed per se. The component's structure will be the following, where [VIDEO-ID] shall be the actual id for the YouTube video:\n{\n      \"type\": \"youtube\",\n      \"content\": \"[VIDEO-ID]\"\n}\n\nThe profile also contains multiple designs and colours:\n - Design: Represented with 2 integers, where 1 represents a layout with a centered profile picture, display name, and social links (special if you want the profile picture to be large), with each component following at the bottom; and 2 represents a compact layout, where the profile picture, display name and social links account for a third of the space occupied by the first layout. The second option is better if you want the component's content to be the most important, while the first one is better for promoting the user itself.\n - Colour: 0 equals dark mode, 1 is orange, 2 is light mode, 3 is green, 4 is blue, 5 is purple/lilac and 6 is yellow/mustard.\n\nWhen the user speaks, you shall answer in JSON format, using the following structure, completing the \"components\" list with components following the structures given before, with 5 being the maximum amount:\n{\n  \"components\": [\n    {\n      \"type\": \"[TYPE]\",\n      \"content\": \"[CONTENT]\"\n    },\n    {\n      \"type\": \"[TYPE]\",\n      \"content\": \"[CONTENT]\"\n    }\n  ],\n  \"profileDesign\": {\n    \"colour\": [COLOUR],\n    \"design\": [DESIGN]\n  }\n}\nYou will give out three alternatives, and only answer with those. Output strictly valid JSON and no extra commentary. If values are not known (like link icons), use null where specified.`;
+        this.systemPrompt = `You're a chatbot that belongs to a web platform oriented to designing user profiles, by creating personal webpages for them, customisable via diverse modules, or components.
+
+The platform contains 5 total components:
+
+- **Generic component**: Consisting of a title and description, with the option of skipping the title by leaving it blank, it allows the user to insert custom markdown content. Its structure is the following, replacing TITLE with the actual title, and DESCRIPTION with the actual description:
+    
+    
+    {
+    	"type": "generic",
+    	"content": {
+    		"title": "[TITLE]",
+    		"description": "[DESCRIPTION]"
+    	}
+    }
+    
+    
+- **Link list component**: Allowing the user to input a maximum of five (5) links, with an optional link image, a link per se, and a title (can be left blank if you want the title to be the link by itself). The component's got 2 available designs: a vertical list, with each item consisting of an image, and its title; or a horizontal grid, with the icon being the main focused, and the title centered at the icon's bottom. The VERTICAL parameter represents a boolean, in which true means the first design, and false meaning the second design.
+Its structure is the following, replacing LINK LIST with a JSON list for each link object:
+    
+    
+    {
+    	"type": "linklist",
+    	"content": {
+    		"links": [LINK LIST],
+    		"vertical": [VERTICAL]
+    	}
+    }
+    
+    
+    Each link object follows the next structure:
+    
+    
+    {
+    "url": "[URL]",
+    "icon": "[ICON]",
+    "title": "[TITLE]"
+    }
+    
+    
+    The icon shall never be completed with images or files outside of the website itself, that's why you will never upload images, use generic assets, or use images in general. You will let the user complete them. The lack of ICON will be completed with null.
+    
+- **Spotify component**: Allowing the user to input a Spotify playlist link, will autocomplete and display the Spotify embed per se. The component's structure will be the following, where PLAYLIST-ID shall be the actual id for the Spotify playlist:
+    
+    
+    {
+      "type": "spotify",
+      "content": "[PLAYLIST-ID]"
+    }
+    
+    
+- **YouTube component**: Allows the user to add a YouTube video link, and will autocomplete the YouTube embed per se. The component's structure will be the following, where VIDEO-ID shall be the actual id for the YouTube video:
+    
+    
+    {
+      "type": "youtube",
+      "content": "[VIDEO-ID]"
+    }
+    
+    
+
+The profile also contains multiple design parameters:
+
+- **Design**: Represented with three integers, where 1 represents a layout with a centered profile picture, display name, and social links (special if you want the profile picture to be large), with each component following at the bottom; 2 represents a compact layout, where the profile picture, display name and social links account for a third of the space occupied by the first layout; 3 represents a bento-inspired layout, where the user’s profile picture, name, username and social links are separated from the rest of the components. The second option is better if you want the component's content to be the most important, while the first one is better for promoting the user itself. The third one presents a modern approach, with modularity and a great new design.
+- **Colour**: 0 equals dark mode, 1 is orange, 2 is light mode, 3 is green, 4 is blue, 5 is purple/lilac, 6 is yellow/mustard, 7 is a chocolate-mint inspired palette, 8 is a chocolate-cherry inspired palette, 9 is cream, 10 is gruvbox and 11 is terracota.
+- **Border radius:** Ranges between 0 and 40, and establishes how much of the profile card’s border radius is. It’s impossible to exceed those values.
+- **Font**: The platform provides three types of fonts: default, which is Poppins, and provides a rounded and modern look; serif, which is Merriweather, and gives a classy look; and mono, which is Fira Code, and provides a unified computer-like appearance. The values need to be in undercase only.
+
+When the user speaks, you shall answer in JSON format, using the following structure, completing the "components" list with components following the structures given before, with 5 being the maximum amount:
+
+
+{
+  "components": [
+    {
+      "type": "[TYPE]",
+      "content": "[CONTENT]"
+    },
+    {
+      "type": "[TYPE]",
+      "content": "[CONTENT]"
+    }
+  ],
+  "profileDesign": {
+    "colour": [COLOUR],
+    "design": [DESIGN],
+    "font": [FONT],
+    "borderRadius": [BORDERRADIUS]
+  }
+}
+
+
+If they’re not prompting you to modify a special component, you will give out three alternatives, and only answer with those. Also, include a short message summarising the changes that you’ve made, so the user can get a wider view on what was done.
+
+When the user gives out its prompt, their current profile design will be appended, so you can get a reference on what they’re up to with their design. That way, you could get some inspiration, and a more detailed view of what to modify.
+
+When they tell you to a certain component, just modify that component, and don’t touch anything else. You would ruin the platform’s approach, and lose clients.
+
+When taking into account profiles for social links, consider that the following can be added in the sociallinks part of the profile. The available options are Steam, iTunes, Bitcoin address, Ethereum address, Discord, TikTok, website, CashApp, Spotify, Instagram, Twitter, Facebook, GitHub, Twitch, YouTube or LinkedIn.
+
+Don’t waste spaces on components that can be arranged in a better way.
+
+If they ask you for directions in order to access some features, consider the following:
+
+- You can edit components by clicking them. On mobile, the edit panel will pop from the bottom of the screen. On desktop, the edit panel is located in the screen’s left. Clicking the components will trigger the edit panel to show its options.
+- You can reorder components by clicking the Reorder option. On mobile, it’s located on the bottom menu, in the floating bar, as a clickable button. On desktop, it’s located on the edit panel in the left side of the screen. Clicking it will trigger the reordering mode, and users will be able to move the components around by dragging and dropping them only on desktop, or with the provided arrows to move them up or down on both mobile and desktop. To exit reorder mode, they should click the button that prompts them to stop the reordering mode.
+- The changes made to the profile are not published until the Publish button is pressed, and the message in the top of the screen reads “Changes published successfully!”
+- If they want to add new components, they can do it by clicking the “Add component” button located in the bottom floating bar, in mobile, or in the edit panel located in the left side of the screen in desktop. There, the platform will prompt them to click on the component’s type, and, once it’s added, with the respective options to fill in parameters in order to configure.
+- If they want to create text, insert images, or refer to the Generic component, clicking it will prompt the user to fill in with a title and description. Markdown is widely supported. You can tell the user the basics of markdown in a short and concise way to guide them towards a nicer design.
+- If they want to delete a component, there’s a red button located at the bottom of the edit panel’s options when they click to edit them. Each component has got a delete component button at the bottom of the options.
+- If they want to check their profile out, or share it, they can access it with the Open profile button at the top of the screen. Otherwise, they can access it with the username.[rar.vg](http://rar.vg) link.
+- If they provide you with their social links, fill them out in the sociallinks component. Don’t use a link list. Otherwise, you can use those links when they refer to content in the website per se, and not social networks or personal profiles. If they prompt you to include a larger link, you can use a link list.
+- Use emojis if possible.`;
     }
 
     /**
@@ -56,8 +167,8 @@ class AIController {
         }
 
         // Retry on network errors, timeouts, and server errors
-        if (error.code === 'ECONNABORTED' || 
-            error.code === 'ETIMEDOUT' || 
+        if (error.code === 'ECONNABORTED' ||
+            error.code === 'ETIMEDOUT' ||
             error.code === 'ENOTFOUND' ||
             error.code === 'ECONNRESET' ||
             error.response?.status >= 500 ||
@@ -80,7 +191,7 @@ class AIController {
             if (headers['x-ratelimit-reset']) {
                 this.rateLimitResetTime = parseInt(headers['x-ratelimit-reset']) * 1000; // Convert to milliseconds
             }
-            
+
             logger.debug('Rate limit info updated', {
                 remaining: this.rateLimitRemaining,
                 resetTime: new Date(this.rateLimitResetTime).toISOString()
@@ -98,15 +209,15 @@ class AIController {
         if (!this.rateLimitResetTime || !this.rateLimitRemaining) {
             return false;
         }
-        
+
         const now = Date.now();
         const isLimited = this.rateLimitRemaining <= 0 && now < this.rateLimitResetTime;
-        
+
         if (isLimited) {
             const resetIn = Math.ceil((this.rateLimitResetTime - now) / 1000);
             logger.warn('Rate limited', { resetInSeconds: resetIn });
         }
-        
+
         return isLimited;
     }
 
@@ -134,7 +245,7 @@ class AIController {
 
             // Validate Groq API response structure
             const { data } = response;
-            
+
             if (!data.choices) {
                 throw new Error('Response missing choices array');
             }
@@ -161,9 +272,9 @@ class AIController {
             }
 
             const content = firstChoice.message.content;
-            
+
             logger.debug('Raw API response received, validating and parsing', { requestId });
-            
+
             // Use the new validation and parsing method
             return this.validateAndParseGroqResponse(content, requestId);
 
@@ -182,15 +293,15 @@ class AIController {
                     contentType: typeof response?.data?.choices?.[0]?.message?.content
                 }
             });
-            
+
             // Return fallback response instead of throwing
             logger.info('Using fallback response due to API response validation failure', { requestId });
             return {
                 success: true,
                 content: JSON.stringify({
-                    a1: { components: [], profileDesign: { colour: 0, design: 1 } },
-                    a2: { components: [], profileDesign: { colour: 2, design: 1 } },
-                    a3: { components: [], profileDesign: { colour: 1, design: 2 } }
+                    a1: { components: [], profileDesign: { colour: 0, design: 1, font: 'default', borderRadius: 8 } },
+                    a2: { components: [], profileDesign: { colour: 2, design: 1, font: 'serif', borderRadius: 16 } },
+                    a3: { components: [], profileDesign: { colour: 1, design: 2, font: 'mono', borderRadius: 24 } }
                 }),
                 fallback: true
             };
@@ -229,17 +340,17 @@ class AIController {
             retry: 0 // Disable axios retry, we handle it manually
         };
 
-        logger.debug('Making Groq API request', { 
-            requestId, 
+        logger.debug('Making Groq API request', {
+            requestId,
             timeout: `${this.requestTimeout}ms`,
             model: this.groqModel
         });
-        
+
         try {
             const response = await axios(requestConfig);
-            logger.debug('API request completed', { 
-                requestId, 
-                status: response.status 
+            logger.debug('API request completed', {
+                requestId,
+                status: response.status
             });
             return response;
         } catch (error) {
@@ -259,59 +370,59 @@ class AIController {
      */
     async makeGroqApiRequestWithRetry(userContent, requestId) {
         let lastError;
-        
+
         for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
             try {
-                logger.debug('API attempt starting', { 
-                    requestId, 
-                    attempt: attempt + 1, 
-                    maxAttempts: this.maxRetries + 1 
+                logger.debug('API attempt starting', {
+                    requestId,
+                    attempt: attempt + 1,
+                    maxAttempts: this.maxRetries + 1
                 });
-                
+
                 // Check rate limiting before making request
                 if (this.isRateLimited()) {
                     const waitTime = this.rateLimitResetTime - Date.now();
                     if (waitTime > 0 && waitTime < 60000) { // Only wait if less than 1 minute
-                        logger.info('Rate limited, waiting before retry', { 
-                            requestId, 
-                            waitSeconds: Math.ceil(waitTime / 1000) 
+                        logger.info('Rate limited, waiting before retry', {
+                            requestId,
+                            waitSeconds: Math.ceil(waitTime / 1000)
                         });
                         await new Promise(resolve => setTimeout(resolve, waitTime));
                     } else {
                         throw new Error('Rate limit exceeded, please try again later');
                     }
                 }
-                
+
                 const startTime = Date.now();
                 const response = await this.makeGroqApiRequest(userContent, requestId);
                 const responseTime = Date.now() - startTime;
-                
+
                 // Handle HTTP error status codes
                 if (response.status >= 400) {
                     const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
                     error.response = response;
                     throw error;
                 }
-                
+
                 // Validate response structure and parse content
                 const validationResult = this.validateGroqApiResponse(response, requestId);
-                
-                logger.info('API request successful', { 
-                    requestId, 
-                    attempt: attempt + 1, 
-                    responseTime: `${responseTime}ms` 
+
+                logger.info('API request successful', {
+                    requestId,
+                    attempt: attempt + 1,
+                    responseTime: `${responseTime}ms`
                 });
                 return validationResult;
-                
+
             } catch (error) {
                 lastError = error;
-                
-                logger.error('API attempt failed', { 
-                    requestId, 
-                    attempt: attempt + 1, 
-                    error: error.message 
+
+                logger.error('API attempt failed', {
+                    requestId,
+                    attempt: attempt + 1,
+                    error: error.message
                 });
-                
+
                 // Log detailed error information
                 if (error.response) {
                     logger.error('HTTP Error details', {
@@ -321,7 +432,7 @@ class AIController {
                         data: error.response.data,
                         errorType: `http_${error.response.status}`
                     });
-                    
+
                     // Update rate limit info even on errors
                     this.updateRateLimitInfo(error.response.headers);
                 } else if (error.request) {
@@ -332,37 +443,37 @@ class AIController {
                         errorType: error.code || 'network'
                     });
                 } else {
-                    logger.error('Request Setup Error', { 
-                        requestId, 
+                    logger.error('Request Setup Error', {
+                        requestId,
                         message: error.message,
                         errorType: 'request_setup'
                     });
                 }
-                
+
                 // Check if we should retry
                 if (!this.shouldRetry(error, attempt)) {
-                    logger.info('Not retrying due to error type', { 
-                        requestId, 
-                        reason: error.message 
+                    logger.info('Not retrying due to error type', {
+                        requestId,
+                        reason: error.message
                     });
                     break;
                 }
-                
+
                 // Calculate delay for next attempt
                 if (attempt < this.maxRetries) {
                     const delay = this.calculateRetryDelay(attempt);
-                    logger.info('Retrying after delay', { 
-                        requestId, 
-                        delaySeconds: Math.ceil(delay / 1000) 
+                    logger.info('Retrying after delay', {
+                        requestId,
+                        delaySeconds: Math.ceil(delay / 1000)
                     });
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
         }
-        
+
         // All attempts failed, throw the last error
-        logger.error('All API attempts failed', { 
-            requestId, 
+        logger.error('All API attempts failed', {
+            requestId,
             totalAttempts: this.maxRetries + 1,
             finalError: lastError.message
         });
@@ -379,8 +490,8 @@ class AIController {
         try {
             // Validate context is an array
             if (!Array.isArray(context)) {
-                logger.warn('Context is not an array, using empty context', { 
-                    receivedType: typeof context 
+                logger.warn('Context is not an array, using empty context', {
+                    receivedType: typeof context
                 });
                 return [];
             }
@@ -394,13 +505,13 @@ class AIController {
             const validMessages = context.filter((msg, index) => {
                 try {
                     if (!msg || typeof msg !== 'object') {
-                        logger.warn('Invalid message object in context', { 
-                            index, 
-                            messageType: typeof msg 
+                        logger.warn('Invalid message object in context', {
+                            index,
+                            messageType: typeof msg
                         });
                         return false;
                     }
-                    
+
                     if (!msg.text || typeof msg.text !== 'string' || msg.text.trim() === '') {
                         logger.warn('Message missing valid text content', {
                             index,
@@ -410,7 +521,7 @@ class AIController {
                         });
                         return false;
                     }
-                    
+
                     if (!msg.sender || !['user', 'ai'].includes(msg.sender)) {
                         logger.warn('Message has invalid sender', {
                             index,
@@ -419,38 +530,38 @@ class AIController {
                         });
                         return false;
                     }
-                    
+
                     // Additional validation for text length
                     if (msg.text.length > 5000) {
-                        logger.warn('Message too long, truncating', { 
-                            index, 
-                            originalLength: msg.text.length 
+                        logger.warn('Message too long, truncating', {
+                            index,
+                            originalLength: msg.text.length
                         });
                         msg.text = msg.text.substring(0, 5000) + '...';
                     }
-                    
+
                     return true;
                 } catch (validationError) {
-                    logger.error('Error validating message', { 
-                        index, 
-                        error: validationError.message 
+                    logger.error('Error validating message', {
+                        index,
+                        error: validationError.message
                     });
                     return false;
                 }
             });
 
-            logger.debug('Context validation complete', { 
-                inputMessages: context.length, 
-                validMessages: validMessages.length 
+            logger.debug('Context validation complete', {
+                inputMessages: context.length,
+                validMessages: validMessages.length
             });
 
             // Convert messages to user/bot pairs
             const pairs = [];
             let currentPair = {};
-            
+
             for (let i = 0; i < validMessages.length; i++) {
                 const msg = validMessages[i];
-                
+
                 try {
                     if (msg.sender === 'user') {
                         // Start a new pair with user message
@@ -472,22 +583,22 @@ class AIController {
                             currentPair = {};
                         } else {
                             // Bot message without preceding user message, skip it
-                            logger.warn('Bot message without preceding user message, skipping', { 
+                            logger.warn('Bot message without preceding user message, skipping', {
                                 messageIndex: i,
                                 textPreview: msg.text.substring(0, 100) + (msg.text.length > 100 ? '...' : '')
                             });
                         }
                     }
                 } catch (pairError) {
-                    logger.error('Error processing message', { 
-                        messageIndex: i, 
-                        error: pairError.message 
+                    logger.error('Error processing message', {
+                        messageIndex: i,
+                        error: pairError.message
                     });
                     // Continue processing other messages
                     continue;
                 }
             }
-            
+
             // If we have an incomplete pair (user message without bot response), add it
             if (currentPair.user) {
                 pairs.push({
@@ -497,9 +608,9 @@ class AIController {
                 logger.debug('Added final incomplete pair (user without bot response)');
             }
 
-            logger.debug('Context formatting successful', { 
-                inputMessages: context.length, 
-                outputPairs: pairs.length 
+            logger.debug('Context formatting successful', {
+                inputMessages: context.length,
+                outputPairs: pairs.length
             });
             return pairs;
 
@@ -509,7 +620,7 @@ class AIController {
                 contextLength: context?.length || 0,
                 stack: error.stack
             });
-            
+
             // Return empty array as fallback to prevent complete failure
             return [];
         }
@@ -523,17 +634,22 @@ class AIController {
     createFallbackResponse(reason = 'API unavailable') {
         const minimal = {
             components: [],
-            profileDesign: { colour: 0, design: 1 }
+            profileDesign: {
+                colour: 0,
+                design: 1,
+                font: 'default',
+                borderRadius: 8
+            }
         };
-        
+
         const fallbackAlternatives = {
-            a1: { ...minimal, profileDesign: { colour: 0, design: 1 } },
-            a2: { ...minimal, profileDesign: { colour: 2, design: 1 } },
-            a3: { ...minimal, profileDesign: { colour: 1, design: 2 } }
+            a1: { ...minimal, profileDesign: { colour: 0, design: 1, font: 'default', borderRadius: 8 } },
+            a2: { ...minimal, profileDesign: { colour: 2, design: 1, font: 'serif', borderRadius: 16 } },
+            a3: { ...minimal, profileDesign: { colour: 1, design: 2, font: 'mono', borderRadius: 24 } }
         };
-        
+
         logger.info('Creating fallback response', { reason });
-        
+
         return {
             status: 200,
             content: {
@@ -552,6 +668,7 @@ class AIController {
      * @returns {Object} - Validation result with parsed content or fallback
      */
     validateAndParseGroqResponse(content, requestId) {
+        console.log('content', content)
         try {
             // Validate content is a string
             if (typeof content !== 'string') {
@@ -582,7 +699,7 @@ class AIController {
 
             // Check for expected alternatives structure (a1, a2, a3)
             const expectedKeys = ['a1', 'a2', 'a3'];
-            const hasValidAlternatives = expectedKeys.every(key => 
+            const hasValidAlternatives = expectedKeys.every(key =>
                 parsedContent[key] && typeof parsedContent[key] === 'object'
             );
 
@@ -591,7 +708,7 @@ class AIController {
                     requestId,
                     keysFound: Object.keys(parsedContent)
                 });
-                
+
                 // Try to fix common response format issues
                 const fixedContent = this.fixResponseFormat(parsedContent, requestId);
                 if (fixedContent) {
@@ -601,14 +718,14 @@ class AIController {
                         content: JSON.stringify(fixedContent)
                     };
                 }
-                
+
                 throw new Error('Response missing required alternatives (a1, a2, a3)');
             }
 
             // Validate each alternative has required structure
             for (const key of expectedKeys) {
                 const alt = parsedContent[key];
-                
+
                 if (!alt.components || !Array.isArray(alt.components)) {
                     logger.warn('Alternative missing or invalid components array, fixing', {
                         requestId,
@@ -616,17 +733,17 @@ class AIController {
                     });
                     alt.components = [];
                 }
-                
+
                 if (!alt.profileDesign || typeof alt.profileDesign !== 'object') {
                     logger.warn('Alternative missing or invalid profileDesign object, fixing', {
                         requestId,
                         alternative: key
                     });
-                    alt.profileDesign = { design: 1, colour: 0 };
+                    alt.profileDesign = { design: 1, colour: 0, font: 'default', borderRadius: 8 };
                 } else {
                     // Validate profileDesign values
-                    if (typeof alt.profileDesign.colour !== 'number' || 
-                        alt.profileDesign.colour < 0 || alt.profileDesign.colour > 6) {
+                    if (typeof alt.profileDesign.colour !== 'number' ||
+                        alt.profileDesign.colour < 0 || alt.profileDesign.colour > 11) {
                         logger.warn('Alternative has invalid colour value, fixing', {
                             requestId,
                             alternative: key,
@@ -634,9 +751,9 @@ class AIController {
                         });
                         alt.profileDesign.colour = 0;
                     }
-                    
-                    if (typeof alt.profileDesign.design !== 'number' || 
-                        (alt.profileDesign.design !== 1 && alt.profileDesign.design !== 2)) {
+
+                    if (typeof alt.profileDesign.design !== 'number' ||
+                        alt.profileDesign.design < 1 || alt.profileDesign.design > 3) {
                         logger.warn('Alternative has invalid design value, fixing', {
                             requestId,
                             alternative: key,
@@ -644,14 +761,40 @@ class AIController {
                         });
                         alt.profileDesign.design = 1;
                     }
+
+                    // Validate font parameter (new)
+                    const validFonts = ['default', 'serif', 'mono'];
+                    if (alt.profileDesign.font && !validFonts.includes(alt.profileDesign.font)) {
+                        logger.warn('Alternative has invalid font value, fixing', {
+                            requestId,
+                            alternative: key,
+                            invalidFont: alt.profileDesign.font
+                        });
+                        alt.profileDesign.font = 'default';
+                    }
+
+                    // Validate borderRadius parameter (new)
+                    if (alt.profileDesign.borderRadius !== undefined) {
+                        if (typeof alt.profileDesign.borderRadius !== 'number' ||
+                            alt.profileDesign.borderRadius < 0 || alt.profileDesign.borderRadius > 40) {
+                            logger.warn('Alternative has invalid borderRadius value, fixing', {
+                                requestId,
+                                alternative: key,
+                                invalidBorderRadius: alt.profileDesign.borderRadius
+                            });
+                            alt.profileDesign.borderRadius = 8; // default value
+                        }
+                    }
                 }
             }
 
-            logger.debug('Response validation successful', { 
-                requestId, 
-                contentLength: content.length 
+            logger.debug('Response validation successful', {
+                requestId,
+                contentLength: content.length
             });
-            
+
+            console.log('parsed', parsedContent)
+
             return {
                 success: true,
                 content: JSON.stringify(parsedContent)
@@ -662,16 +805,16 @@ class AIController {
                 requestId,
                 error: error.message
             });
-            
+
             // Return fallback response structure
             const fallbackAlternatives = {
-                a1: { components: [], profileDesign: { colour: 0, design: 1 } },
-                a2: { components: [], profileDesign: { colour: 2, design: 1 } },
-                a3: { components: [], profileDesign: { colour: 1, design: 2 } }
+                a1: { components: [], profileDesign: { colour: 0, design: 1, font: 'default', borderRadius: 8 } },
+                a2: { components: [], profileDesign: { colour: 2, design: 1, font: 'serif', borderRadius: 16 } },
+                a3: { components: [], profileDesign: { colour: 1, design: 2, font: 'mono', borderRadius: 24 } }
             };
-            
+
             logger.info('Using fallback response due to validation failure', { requestId });
-            
+
             return {
                 success: true,
                 content: JSON.stringify(fallbackAlternatives),
@@ -690,7 +833,7 @@ class AIController {
         try {
             // Check if response has alternatives with different key names
             const altKeys = Object.keys(parsedContent);
-            
+
             // Try to map common alternative key patterns
             const keyMappings = [
                 ['alt1', 'alt2', 'alt3'],
@@ -698,12 +841,12 @@ class AIController {
                 ['alternative1', 'alternative2', 'alternative3'],
                 ['design1', 'design2', 'design3']
             ];
-            
+
             for (const mapping of keyMappings) {
                 if (mapping.every(key => parsedContent[key])) {
-                    logger.debug('Found alternative mapping', { 
-                        requestId, 
-                        mapping: mapping.join(', ') 
+                    logger.debug('Found alternative mapping', {
+                        requestId,
+                        mapping: mapping.join(', ')
                     });
                     return {
                         a1: parsedContent[mapping[0]],
@@ -712,12 +855,12 @@ class AIController {
                     };
                 }
             }
-            
+
             // Check if response is an array of alternatives
             if (Array.isArray(parsedContent) && parsedContent.length >= 3) {
-                logger.debug('Found array format', { 
-                    requestId, 
-                    alternativeCount: parsedContent.length 
+                logger.debug('Found array format', {
+                    requestId,
+                    alternativeCount: parsedContent.length
                 });
                 return {
                     a1: parsedContent[0],
@@ -725,34 +868,46 @@ class AIController {
                     a3: parsedContent[2]
                 };
             }
-            
+
             // Check if response has a single alternative that we can replicate
             if (parsedContent.components && parsedContent.profileDesign) {
                 logger.debug('Found single alternative, creating variations', { requestId });
                 return {
-                    a1: { ...parsedContent },
-                    a2: { 
-                        ...parsedContent, 
-                        profileDesign: { 
-                            ...parsedContent.profileDesign, 
-                            colour: (parsedContent.profileDesign.colour + 1) % 7 
-                        } 
+                    a1: {
+                        ...parsedContent,
+                        profileDesign: {
+                            colour: parsedContent.profileDesign.colour || 0,
+                            design: parsedContent.profileDesign.design || 1,
+                            font: parsedContent.profileDesign.font || 'default',
+                            borderRadius: parsedContent.profileDesign.borderRadius || 8
+                        }
                     },
-                    a3: { 
-                        ...parsedContent, 
-                        profileDesign: { 
-                            ...parsedContent.profileDesign, 
-                            design: parsedContent.profileDesign.design === 1 ? 2 : 1 
-                        } 
+                    a2: {
+                        ...parsedContent,
+                        profileDesign: {
+                            ...parsedContent.profileDesign,
+                            colour: (parsedContent.profileDesign.colour + 1) % 12,
+                            font: 'serif',
+                            borderRadius: 16
+                        }
+                    },
+                    a3: {
+                        ...parsedContent,
+                        profileDesign: {
+                            ...parsedContent.profileDesign,
+                            design: parsedContent.profileDesign.design === 1 ? 2 : (parsedContent.profileDesign.design === 2 ? 3 : 1),
+                            font: 'mono',
+                            borderRadius: 24
+                        }
                     }
                 };
             }
-            
+
             return null;
         } catch (error) {
-            logger.error('Error fixing response format', { 
-                requestId, 
-                error: error.message 
+            logger.error('Error fixing response format', {
+                requestId,
+                error: error.message
             });
             return null;
         }
@@ -843,7 +998,7 @@ class AIController {
 
         // Sanitize message by trimming whitespace
         const trimmedMessage = message.trim();
-        
+
         if (trimmedMessage === '') {
             validation.success = false;
             validation.errors.push('Please enter a message to get design suggestions.');
@@ -853,7 +1008,7 @@ class AIController {
         // Validate message length limits
         const minLength = 1;
         const maxLength = 2000;
-        
+
         if (trimmedMessage.length < minLength) {
             validation.success = false;
             validation.errors.push('Message is too short. Please provide more details.');
@@ -869,7 +1024,7 @@ class AIController {
         // Basic input sanitization - remove potentially harmful characters
         // Keep alphanumeric, spaces, punctuation, and common symbols
         const sanitizedMessage = trimmedMessage.replace(/[^\w\s\-.,!?@#$%^&*()+=[\]{}|;':"<>/\\`~]/g, '');
-        
+
         if (sanitizedMessage.length === 0) {
             validation.success = false;
             validation.errors.push('Message contains only invalid characters. Please use standard text.');
@@ -881,51 +1036,51 @@ class AIController {
         // Validate context array structure
         if (context !== null && context !== undefined) {
             if (!Array.isArray(context)) {
-                logger.warn('Context is not an array, using empty context', { 
-                    requestId, 
-                    receivedType: typeof context 
+                logger.warn('Context is not an array, using empty context', {
+                    requestId,
+                    receivedType: typeof context
                 });
                 validation.validatedContext = [];
             } else {
                 // Limit context history size to prevent large payloads and potential abuse
                 const maxContextSize = 20;
-                const contextToValidate = context.length > maxContextSize ? 
+                const contextToValidate = context.length > maxContextSize ?
                     context.slice(-maxContextSize) : context;
 
-                logger.debug('Validating context', { 
-                    requestId, 
-                    totalMessages: context.length, 
-                    processingMessages: contextToValidate.length 
+                logger.debug('Validating context', {
+                    requestId,
+                    totalMessages: context.length,
+                    processingMessages: contextToValidate.length
                 });
 
                 // Validate each context message
                 const validMessages = [];
                 for (let i = 0; i < contextToValidate.length; i++) {
                     const msg = contextToValidate[i];
-                    
+
                     // Skip null/undefined messages
                     if (!msg || typeof msg !== 'object') {
-                        logger.warn('Skipping invalid message: not an object', { 
-                            requestId, 
-                            index: i 
+                        logger.warn('Skipping invalid message: not an object', {
+                            requestId,
+                            index: i
                         });
                         continue;
                     }
 
                     // Validate message structure
                     if (!msg.text || typeof msg.text !== 'string') {
-                        logger.warn('Skipping message: missing or invalid text', { 
-                            requestId, 
-                            index: i 
+                        logger.warn('Skipping message: missing or invalid text', {
+                            requestId,
+                            index: i
                         });
                         continue;
                     }
 
                     if (!msg.sender || !['user', 'ai'].includes(msg.sender)) {
-                        logger.warn('Skipping message: invalid sender', { 
-                            requestId, 
-                            index: i, 
-                            sender: msg.sender 
+                        logger.warn('Skipping message: invalid sender', {
+                            requestId,
+                            index: i,
+                            sender: msg.sender
                         });
                         continue;
                     }
@@ -933,9 +1088,9 @@ class AIController {
                     // Sanitize and validate message text
                     const trimmedText = msg.text.trim();
                     if (trimmedText === '') {
-                        logger.warn('Skipping message: empty text after trimming', { 
-                            requestId, 
-                            index: i 
+                        logger.warn('Skipping message: empty text after trimming', {
+                            requestId,
+                            index: i
                         });
                         continue;
                     }
@@ -943,24 +1098,24 @@ class AIController {
                     // Limit individual message length in context
                     const maxContextMessageLength = 1000;
                     let sanitizedText = trimmedText;
-                    
+
                     if (sanitizedText.length > maxContextMessageLength) {
                         sanitizedText = sanitizedText.substring(0, maxContextMessageLength) + '...';
-                        logger.warn('Truncated context message', { 
-                            requestId, 
-                            index: i, 
-                            originalLength: trimmedText.length, 
-                            truncatedLength: sanitizedText.length 
+                        logger.warn('Truncated context message', {
+                            requestId,
+                            index: i,
+                            originalLength: trimmedText.length,
+                            truncatedLength: sanitizedText.length
                         });
                     }
 
                     // Basic sanitization for context messages
                     sanitizedText = sanitizedText.replace(/[^\w\s\-.,!?@#$%^&*()+=[\]{}|;':"<>/\\`~]/g, '');
-                    
+
                     if (sanitizedText.length === 0) {
-                        logger.warn('Skipping message: no valid characters after sanitization', { 
-                            requestId, 
-                            index: i 
+                        logger.warn('Skipping message: no valid characters after sanitization', {
+                            requestId,
+                            index: i
                         });
                         continue;
                     }
@@ -974,10 +1129,10 @@ class AIController {
                 }
 
                 validation.validatedContext = validMessages;
-                logger.debug('Context validation complete', { 
-                    requestId, 
-                    inputMessages: contextToValidate.length, 
-                    validMessages: validMessages.length 
+                logger.debug('Context validation complete', {
+                    requestId,
+                    inputMessages: contextToValidate.length,
+                    validMessages: validMessages.length
                 });
             }
         } else {
@@ -990,22 +1145,22 @@ class AIController {
     async generateChatResponse(message, context = []) {
         let formattedContext = [];
         const requestId = Date.now().toString(36) + Math.random().toString(36).substring(2);
-        
+
         try {
             // Log AI chat request with sanitized content
             logger.logAIChatRequest(requestId, message, context, {
                 groqModel: this.groqModel,
                 apiKeyConfigured: !!this.groqApiKey
             });
-            
+
             // Enhanced input validation and sanitization
             const inputValidation = this.validateChatInput(message, context, requestId);
-            
+
             if (!inputValidation.success) {
                 const errorMessage = inputValidation.errors.join(' ');
-                logger.warn('Input validation failed', { 
-                    requestId, 
-                    errors: inputValidation.errors 
+                logger.warn('Input validation failed', {
+                    requestId,
+                    errors: inputValidation.errors
                 });
                 return this.createErrorResponse(errorMessage, 400);
             }
@@ -1014,10 +1169,10 @@ class AIController {
             const sanitizedMessage = inputValidation.sanitizedMessage;
             const validatedContext = inputValidation.validatedContext;
 
-            logger.debug('Input validation successful', { 
-                requestId, 
-                messageLength: sanitizedMessage.length, 
-                contextMessages: validatedContext.length 
+            logger.debug('Input validation successful', {
+                requestId,
+                messageLength: sanitizedMessage.length,
+                contextMessages: validatedContext.length
             });
 
             // Check if Groq API key is configured
@@ -1030,25 +1185,25 @@ class AIController {
             try {
                 formattedContext = this.formatContextForGroq(validatedContext);
             } catch (contextError) {
-                logger.error('Context formatting failed', { 
-                    requestId, 
-                    error: contextError.message 
+                logger.error('Context formatting failed', {
+                    requestId,
+                    error: contextError.message
                 });
                 // Continue with empty context rather than failing
                 formattedContext = [];
             }
-            
+
             // Limit context history size to prevent large payloads
             const maxContextPairs = 10;
             if (formattedContext.length > maxContextPairs) {
-                logger.info('Context too large, limiting to most recent pairs', { 
-                    requestId, 
-                    originalPairs: formattedContext.length, 
-                    limitedTo: maxContextPairs 
+                logger.info('Context too large, limiting to most recent pairs', {
+                    requestId,
+                    originalPairs: formattedContext.length,
+                    limitedTo: maxContextPairs
                 });
                 formattedContext = formattedContext.slice(-maxContextPairs);
             }
-            
+
             // Build context from recent conversation pairs
             const recentPairs = formattedContext.slice(-3)
                 .map(p => `User: ${p.user}\nAssistant: ${p.bot}`)
@@ -1070,7 +1225,7 @@ class AIController {
                     responseTime: `${responseTime}ms`,
                     attempts: 'all_failed'
                 });
-                
+
                 // Handle specific error scenarios with appropriate user-friendly messages
                 if (apiError.code === 'ECONNABORTED' || apiError.message.includes('timeout')) {
                     logger.error('Request timeout - API took longer than expected', { requestId });
@@ -1079,25 +1234,25 @@ class AIController {
                         503
                     );
                 }
-                
+
                 if (apiError.response) {
                     const status = apiError.response.status;
                     const errorData = apiError.response.data;
-                    
+
                     logger.error('Final API Error Response', {
                         requestId,
                         status,
                         data: errorData,
                         errorType: `http_${status}`
                     });
-                    
+
                     // Handle rate limiting with more specific messaging
                     if (status === 429) {
                         const resetTime = this.rateLimitResetTime;
                         const waitTime = resetTime ? Math.ceil((resetTime - Date.now()) / 1000) : 60;
-                        logger.error('Rate limit exceeded', { 
-                            requestId, 
-                            resetInSeconds: waitTime 
+                        logger.error('Rate limit exceeded', {
+                            requestId,
+                            resetInSeconds: waitTime
                         });
                         return this.createErrorResponse(
                             `Too many requests. Please wait ${waitTime > 60 ? 'a few minutes' : waitTime + ' seconds'} and try again.`,
@@ -1105,19 +1260,19 @@ class AIController {
                             { retryAfter: waitTime }
                         );
                     }
-                    
+
                     // Handle authentication errors
                     if (status === 401 || status === 403) {
                         logger.error('Authentication failed', { requestId });
                         return this.createFallbackResponse('Authentication failed');
                     }
-                    
+
                     // Handle server errors
                     if (status >= 500) {
                         logger.error('Server error', { requestId, status });
                         return this.createFallbackResponse('Server error');
                     }
-                    
+
                     // Handle other client errors
                     if (status >= 400) {
                         logger.error('Client error', { requestId, status });
@@ -1127,33 +1282,33 @@ class AIController {
                         );
                     }
                 } else if (apiError.request) {
-                    logger.error('Network error - no response received', { 
-                        requestId, 
-                        code: apiError.code 
+                    logger.error('Network error - no response received', {
+                        requestId,
+                        code: apiError.code
                     });
                     return this.createErrorResponse(
                         'Unable to connect to AI service. Please check your connection and try again.',
                         503
                     );
                 } else {
-                    logger.error('Request setup error', { 
-                        requestId, 
-                        message: apiError.message 
+                    logger.error('Request setup error', {
+                        requestId,
+                        message: apiError.message
                     });
                     return this.createErrorResponse(
                         'An unexpected error occurred. Please try again.',
                         500
                     );
                 }
-                
+
                 // Fallback for any unhandled API errors
                 return this.createFallbackResponse('API error after retries');
             }
 
             const responseTime = Date.now() - startTime;
-            logger.info('Groq API request completed successfully', { 
-                requestId, 
-                responseTime: `${responseTime}ms` 
+            logger.info('Groq API request completed successfully', {
+                requestId,
+                responseTime: `${responseTime}ms`
             });
 
             // Create standardized success response
@@ -1175,7 +1330,7 @@ class AIController {
                 hasApiKey: !!this.groqApiKey,
                 model: this.groqModel
             });
-            
+
             // Return user-friendly error without exposing technical details
             return this.createErrorResponse(
                 'Something went wrong while processing your request. Please try again.',
@@ -1187,18 +1342,18 @@ class AIController {
     async processAIChat(message, context = []) {
         const startTime = Date.now();
         const requestId = Date.now().toString(36) + Math.random().toString(36).substring(2);
-        
+
         try {
             logger.info('Processing AI chat request', { requestId });
-            
+
             // Perform comprehensive input validation at entry point
             const inputValidation = this.validateChatInput(message, context, requestId);
-            
+
             if (!inputValidation.success) {
                 const errorMessage = inputValidation.errors.join(' ');
-                logger.warn('Entry point validation failed', { 
-                    requestId, 
-                    errors: inputValidation.errors 
+                logger.warn('Entry point validation failed', {
+                    requestId,
+                    errors: inputValidation.errors
                 });
                 return this.createErrorResponse(errorMessage, 400);
             }
@@ -1207,22 +1362,22 @@ class AIController {
 
             const result = await this.generateChatResponse(message, context);
             const processingTime = Date.now() - startTime;
-            
-            logger.info('AI chat processing completed', { 
-                requestId, 
-                processingTime: `${processingTime}ms`, 
-                status: result.status 
+
+            logger.info('AI chat processing completed', {
+                requestId,
+                processingTime: `${processingTime}ms`,
+                status: result.status
             });
-            
+
             // Log success/failure metrics using the logger's built-in response logging
             const success = result.status === 200;
             logger.logAIChatResponse(requestId, success, processingTime, {
                 status: result.status,
                 errorDetails: success ? null : (result.content?.error || 'No error details')
             });
-            
+
             return result;
-            
+
         } catch (error) {
             const processingTime = Date.now() - startTime;
             logger.logErrorWithContext(requestId, error, {
@@ -1233,7 +1388,7 @@ class AIController {
                 contextType: typeof context,
                 contextLength: Array.isArray(context) ? context.length : 'not array'
             });
-            
+
             // Return a safe fallback response
             return this.createErrorResponse(
                 'An unexpected error occurred while processing your request. Please try again.',
