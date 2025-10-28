@@ -9,13 +9,14 @@ const root = path.normalize(path.join(path.dirname(require.main.filename), '..')
 
 class RouterController
 {
-    constructor()
+    constructor(storageManager = null)
     {
         this.emailController = new EmailController()
         this.sessionController = new SessionController()
         this.userController = new UserController(this.sessionController, this.emailController)
-        this.fileController = new FileController(this.sessionController)
+        this.fileController = new FileController(this.sessionController, storageManager)
         this.aiController = new AIController()
+        this.storageManager = storageManager
     }
 
     // Creates the server.
