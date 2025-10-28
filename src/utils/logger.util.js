@@ -34,7 +34,30 @@ class Logger {
             successes: 0,
             failures: 0,
             totalResponseTime: 0,
-            errors: new Map() // Error type -> count
+            errors: new Map(), // Error type -> count
+            storage: {
+                uploads: {
+                    total: 0,
+                    r2: 0,
+                    local: 0,
+                    fallbacks: 0,
+                    failures: 0
+                },
+                downloads: {
+                    total: 0,
+                    r2: 0,
+                    local: 0,
+                    fallbacks: 0,
+                    failures: 0
+                },
+                r2Availability: {
+                    checks: 0,
+                    successes: 0,
+                    failures: 0,
+                    lastCheck: null,
+                    lastStatus: null
+                }
+            }
         };
 
         console.log(`Logger initialized - Level: ${this.getLevelName(this.currentLevel)}, File logging: ${this.fileLogging}`);
@@ -319,6 +342,242 @@ class Logger {
     }
 
     /**
+     * Log storage operation with metrics tracking
+     * @param {string} operation - Operation type ('upload' or 'download')
+     * @param {string} storageLocation - Storage location ('r2' or 'local')
+     * @param {boolean} success - Whether operation was successful
+     * @param {boolean} fallbackUsed - Whether fallback storage was used
+     * @param {Object} context - Additional context information
+     */
+    logStorageOperation(operation, storageLocation, success, fallbackUsed = false, context = {}) {
+        const operationType = operation.toLowerCase();
+        
+        // Update metrics
+        if (this.metrics.storage[operationType + 's']) {
+            const opMetrics = this.metrics.storage[operationType + 's'];
+            opMetrics.total++;
+            
+            if (success) {
+                opMetrics[storageLocation]++;
+                if (fallbackUsed) {
+                    opMetrics.fallbacks++;
+                }
+            } else {
+                opMetrics.failures++;
+            }
+        }
+
+        // Log the operation
+        const logLevel = success ? 'info' : 'error';
+        const message = `Storage ${operation} ${success ? 'successful' : 'failed'}`;
+        
+        this[logLevel](message, {
+            operation,
+            storageLocation,
+            success,
+            fallbackUsed,
+            ...context
+        });
+    }
+
+    /**
+     * Log R2 availability check with metrics tracking
+     * @param {boolean} available - Whether R2 is available
+     * @param {number} responseTime - Response time in milliseconds
+     * @param {Object} context - Additional context information
+     */
+    logR2AvailabilityCheck(available, responseTime, context = {}) {
+        const r2Metrics = this.metrics.storage.r2Availability;
+        r2Metrics.checks++;
+        r2Metrics.lastCheck = new Date().toISOString();
+        r2Metrics.lastStatus = available;
+        
+        if (available) {
+            r2Metrics.successes++;
+        } else {
+            r2Metrics.failures++;
+        }
+
+        const logLevel = available ? 'debug' : 'warn';
+        const message = `R2 availability check: ${available ? 'Available' : 'Unavailable'}`;
+        
+        this[logLevel](message, {
+            available,
+            responseTime: `${responseTime}ms`,
+            successRate: r2Metrics.checks > 0 ? Math.round((r2Metrics.successes / r2Metrics.checks) * 100) : 0,
+            ...context
+        });
+    }
+
+    /**
+     * Log storage fallback usage with detailed context
+     * @param {string} operation - Operation type
+     * @param {string} primaryStorage - Primary storage that failed
+     * @param {string} fallbackStorage - Fallback storage used
+     * @param {Error} primaryError - Error that caused fallback
+     * @param {Object} context - Additional context
+     */
+    logStorageFallback(operation, primaryStorage, fallbackStorage, primaryError, context = {}) {
+        this.warn(`Storage fallback used: ${operation}`, {
+            operation,
+            primaryStorage,
+            fallbackStorage,
+            primaryError: primaryError.message,
+            errorType: 'storage_fallback',
+            monitoring: {
+                fallbackUsed: true,
+                operation,
+                primaryStorage,
+                fallbackStorage,
+                reason: primaryError.name || 'unknown'
+            },
+            ...context
+        });
+
+        // Track fallback in metrics
+        const operationType = operation.toLowerCase();
+        if (this.metrics.storage[operationType + 's']) {
+            this.metrics.storage[operationType + 's'].fallbacks++;
+        }
+    }
+
+    /**
+     * Log storage error with enhanced context and monitoring hooks
+     * @param {string} operation - Operation type
+     * @param {string} storageLocation - Storage location where error occurred
+     * @param {Error} error - The error that occurred
+     * @param {Object} context - Additional context
+     */
+    logStorageError(operation, storageLocation, error, context = {}) {
+        // Determine error category for better monitoring
+        let errorCategory = 'unknown';
+        if (error.code) {
+            errorCategory = error.code;
+        } else if (error.message.includes('timeout')) {
+            errorCategory = 'timeout';
+        } else if (error.message.includes('network')) {
+            errorCategory = 'network';
+        } else if (error.message.includes('credentials')) {
+            errorCategory = 'authentication';
+        } else if (error.message.includes('permission')) {
+            errorCategory = 'authorization';
+        } else if (error.message.includes('not found')) {
+            errorCategory = 'not_found';
+        }
+
+        this.error(`Storage ${operation} error in ${storageLocation}`, {
+            operation,
+            storageLocation,
+            errorCategory,
+            errorMessage: error.message,
+            errorCode: error.code,
+            errorStack: error.stack,
+            errorType: 'storage_operation_error',
+            monitoring: {
+                storageError: true,
+                operation,
+                storageLocation,
+                errorCategory
+            },
+            ...context
+        });
+
+        // Track error in metrics
+        const errorKey = `${storageLocation}_${errorCategory}`;
+        this.metrics.errors.set(errorKey, (this.metrics.errors.get(errorKey) || 0) + 1);
+    }
+
+    /**
+     * Get comprehensive storage metrics
+     * @returns {Object} Storage metrics summary
+     */
+    getStorageMetrics() {
+        const storage = this.metrics.storage;
+        
+        return {
+            uploads: {
+                total: storage.uploads.total,
+                r2: storage.uploads.r2,
+                local: storage.uploads.local,
+                fallbacks: storage.uploads.fallbacks,
+                failures: storage.uploads.failures,
+                successRate: storage.uploads.total > 0 
+                    ? Math.round(((storage.uploads.total - storage.uploads.failures) / storage.uploads.total) * 100)
+                    : 0,
+                fallbackRate: storage.uploads.total > 0
+                    ? Math.round((storage.uploads.fallbacks / storage.uploads.total) * 100)
+                    : 0
+            },
+            downloads: {
+                total: storage.downloads.total,
+                r2: storage.downloads.r2,
+                local: storage.downloads.local,
+                fallbacks: storage.downloads.fallbacks,
+                failures: storage.downloads.failures,
+                successRate: storage.downloads.total > 0
+                    ? Math.round(((storage.downloads.total - storage.downloads.failures) / storage.downloads.total) * 100)
+                    : 0,
+                fallbackRate: storage.downloads.total > 0
+                    ? Math.round((storage.downloads.fallbacks / storage.downloads.total) * 100)
+                    : 0
+            },
+            r2Availability: {
+                checks: storage.r2Availability.checks,
+                successes: storage.r2Availability.successes,
+                failures: storage.r2Availability.failures,
+                successRate: storage.r2Availability.checks > 0
+                    ? Math.round((storage.r2Availability.successes / storage.r2Availability.checks) * 100)
+                    : 0,
+                lastCheck: storage.r2Availability.lastCheck,
+                lastStatus: storage.r2Availability.lastStatus
+            }
+        };
+    }
+
+    /**
+     * Log comprehensive storage metrics summary
+     */
+    logStorageMetrics() {
+        const metrics = this.getStorageMetrics();
+        this.info('Storage Metrics Summary', metrics);
+    }
+
+    /**
+     * Create monitoring alert for storage issues
+     * @param {string} alertType - Type of alert
+     * @param {string} severity - Alert severity ('low', 'medium', 'high', 'critical')
+     * @param {string} message - Alert message
+     * @param {Object} context - Alert context
+     */
+    createStorageAlert(alertType, severity, message, context = {}) {
+        const alert = {
+            alertType,
+            severity,
+            message,
+            timestamp: new Date().toISOString(),
+            context,
+            monitoring: {
+                alert: true,
+                alertType,
+                severity
+            }
+        };
+
+        // Log at appropriate level based on severity
+        const logLevel = severity === 'critical' ? 'error' : 
+                        severity === 'high' ? 'error' :
+                        severity === 'medium' ? 'warn' : 'info';
+
+        this[logLevel](`Storage Alert [${severity.toUpperCase()}]: ${message}`, alert);
+
+        // In a production environment, this could trigger external monitoring systems
+        // For now, we'll just ensure it's prominently logged
+        if (severity === 'critical' || severity === 'high') {
+            console.error(`🚨 STORAGE ALERT [${severity.toUpperCase()}]: ${message}`);
+        }
+    }
+
+    /**
      * Reset metrics (useful for periodic reporting)
      */
     resetMetrics() {
@@ -327,7 +586,30 @@ class Logger {
             successes: 0,
             failures: 0,
             totalResponseTime: 0,
-            errors: new Map()
+            errors: new Map(),
+            storage: {
+                uploads: {
+                    total: 0,
+                    r2: 0,
+                    local: 0,
+                    fallbacks: 0,
+                    failures: 0
+                },
+                downloads: {
+                    total: 0,
+                    r2: 0,
+                    local: 0,
+                    fallbacks: 0,
+                    failures: 0
+                },
+                r2Availability: {
+                    checks: 0,
+                    successes: 0,
+                    failures: 0,
+                    lastCheck: null,
+                    lastStatus: null
+                }
+            }
         };
         this.info('Metrics reset');
     }
